@@ -49,7 +49,7 @@ pub(super) fn application_menus(context: MenuContext) -> Vec<Menu> {
             item(
                 "panel.assistant",
                 MenuCommand::ShowPanel(WorkbenchPanel::Assistant),
-                context.busy,
+                context.busy || !context.project,
             )
             .checked(context.assistant_open),
             MenuItem::separator(),

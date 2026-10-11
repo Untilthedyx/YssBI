@@ -6,7 +6,7 @@ use super::{
     activity::{ActivityEvent, ActivityPanel, ReadState},
 };
 use gpui_kit::component::dock::{DockPlacement, PaneRef, panel_handle};
-use gpui_kit::{AppContext, Context, Window, div, prelude::*, px};
+use gpui_kit::{AppContext, Context, Window};
 use yss_application::activity_panel::ActivityPanelDocument;
 use yss_assistant_ui::{AssistantEventKind, ConversationPanel, DirectoryReadState};
 
@@ -68,9 +68,9 @@ impl Workbench {
         self.assistant_observation = Some(cx.observe(&self.assistant, |_, _, cx| cx.notify()));
     }
 
-    pub(super) fn show_assistant(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.busy || self.closing {
-            return;
+    pub(super) fn show_assistant(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
+        if self.project.is_none() || self.busy || self.closing {
+            return false;
         }
         self.ensure_assistant_directory(window, cx);
         self.present_assistant(window, cx);
@@ -78,6 +78,7 @@ impl Workbench {
             self.finish_intent(&intent, true, window, cx);
         }
         self.refresh_assistant_directory(window, cx);
+        true
     }
 
     pub(super) fn refresh_assistant_directory(
@@ -177,6 +178,9 @@ impl Workbench {
     }
 
     fn present_assistant(&self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.project.is_none() {
+            return;
+        }
         let Some(panel) = self
             .activities
             .get("assistant")
@@ -185,28 +189,6 @@ impl Workbench {
             return;
         };
         self.present_panel(panel_handle(panel), DockPlacement::Left, window, cx);
-        if self.project.is_none() {
-            self.dock.update(cx, |dock, cx| {
-                for placement in [DockPlacement::Right, DockPlacement::Bottom] {
-                    if dock.is_dock_open(placement) {
-                        dock.toggle_dock(placement, window, cx);
-                    }
-                }
-            });
-            let dock = self.dock.clone();
-            yss_ui::modal_window::open(
-                yss_ui::text::t("panel.assistant"),
-                gpui_kit::size(px(1160.), px(740.)),
-                window,
-                cx,
-                move |_, _| {
-                    yss_ui::modal_window::ModalContent::new(move |_, _| {
-                        div().h(px(620.)).child(dock.clone())
-                    })
-                    .without_buttons()
-                },
-            );
-        }
     }
 
     pub(super) fn new_conversation(&mut self, window: &mut Window, cx: &mut Context<Self>) {

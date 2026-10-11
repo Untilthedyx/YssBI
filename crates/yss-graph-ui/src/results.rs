@@ -44,7 +44,7 @@ impl Render for ResultsPanel {
             .when(self.entries.is_empty(), |view| {
                 view.child(appearance::empty_state(
                     IconName::Inbox,
-                    yss_ui::text::t("panel.assistantToolNames.inspect_result"),
+                    yss_ui::text::t("panel.results"),
                     yss_ui::text::t("native.workbench.resultsHint"),
                     cx,
                 ))
@@ -107,7 +107,7 @@ impl Panel for ResultsPanel {
             .items_center()
             .gap_2()
             .child(Icon::new(IconName::Table).size_3())
-            .child(yss_ui::text::t("detail.description.result"))
+            .child(yss_ui::text::t("panel.results"))
     }
     fn inner_padding(&self, _: &App) -> bool {
         false

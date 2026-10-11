@@ -54,8 +54,7 @@ impl Workbench {
     ) -> bool {
         match panel {
             WorkbenchPanel::Assistant => {
-                self.show_assistant(window, cx);
-                return true;
+                return self.show_assistant(window, cx);
             }
             WorkbenchPanel::Settings => {
                 self.show_settings(window, cx);

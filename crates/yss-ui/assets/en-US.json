@@ -757,7 +757,8 @@
     "assistantToolUnknown": "Outcome unknown",
     "details": "Details",
     "logs": "Logs",
-    "output": "Output",
+    "output": "Outputs",
+    "results": "Results",
     "problems": "Problems",
     "problemsLocate": "Reveal problem location",
     "problemsRelated": "Related",
@@ -1510,7 +1511,7 @@
   "settings": {
     "knowledge": {
       "updated": "Last rebuilt: %{value}",
-      "title": "Project knowledge",
+      "title": "Knowledge",
       "description": "Select project Markdown documents for on-demand AI retrieval. Matching passages are sent to the selected model. Rebuild after editing a document.",
       "builtin": "Built-in statistical methods remain available. Conversations are never added automatically.",
       "noProject": "Open a project to manage document sources.",
@@ -2503,9 +2504,6 @@
       "emptySchemaProbe": "Empty-input schema probe · %{value0}",
       "locateFailedNode": "Locate failed node",
       "toggleLeftSidebar": "Toggle left sidebar",
-      "runOutput": "Run output",
-      "runResults": "Run results",
-      "toggleBottomPanel": "Toggle bottom panel",
       "properties": "Properties",
       "toggleRightSidebar": "Toggle right sidebar",
       "nodeCount": "%{value0} nodes",

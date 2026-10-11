@@ -1,9 +1,14 @@
 //! Measured rendering bounds; DockArea remains the owner of all layout state.
-use super::super::{Workbench, layout::columns};
+use super::super::{
+    Workbench,
+    layout::columns,
+    status_bar::{ColumnStatusBar, STATUS_BAR_HEIGHT, StatusColumn},
+};
 use gpui_kit::component::dock::{DockArea, NodeId};
 use gpui_kit::{
     AnyElement, App, AvailableSpace, Bounds, ContentMask, Element, ElementId, GlobalElementId,
-    InspectorElementId, IntoElement, LayoutId, Pixels, WeakEntity, Window, div, prelude::*, px,
+    InspectorElementId, IntoElement, LayoutId, Pixels, WeakEntity, Window, deferred, div,
+    prelude::*, px,
 };
 use std::{cell::Cell, rc::Rc};
 
@@ -14,10 +19,6 @@ pub(in crate::workbench) struct Measurements {
 }
 
 impl Measurements {
-    pub(in crate::workbench) fn leading_width(&self) -> Pixels {
-        (self.editor_left.get() - self.center.get().left()).max(px(0.))
-    }
-
     pub(super) fn record_center(
         &self,
         bounds: Bounds<Pixels>,
@@ -57,6 +58,7 @@ impl Measurements {
 enum Region {
     Conversation(NodeId),
     Bottom,
+    Status(StatusColumn),
 }
 
 /// Reuses the original panel element at its measured workbench boundary.
@@ -100,6 +102,31 @@ impl RegionContent {
             measurements,
         }
     }
+}
+
+pub(super) fn status_bars(
+    area: WeakEntity<DockArea>,
+    owner: WeakEntity<Workbench>,
+    measurements: Rc<Measurements>,
+    bottom: Pixels,
+) -> impl IntoElement {
+    div()
+        .absolute()
+        .bottom(bottom)
+        .left_0()
+        .right_0()
+        .h(STATUS_BAR_HEIGHT)
+        .children(
+            [StatusColumn::Conversation, StatusColumn::Editor].map(|column| {
+                div().absolute().inset_0().child(deferred(RegionContent {
+                    child: Some(ColumnStatusBar::new(owner.clone(), column).into_any_element()),
+                    region: Region::Status(column),
+                    area: area.clone(),
+                    owner: owner.clone(),
+                    measurements: measurements.clone(),
+                }))
+            }),
+        )
 }
 
 impl IntoElement for RegionContent {
@@ -156,7 +183,8 @@ impl Element for RegionContent {
                         owner.busy || owner.closing
                     });
                     if !blocked {
-                        target.size.height = (area.bounds().bottom() - bounds.top()).max(px(0.));
+                        target.size.height =
+                            (area.bounds().bottom() - STATUS_BAR_HEIGHT - bounds.top()).max(px(0.));
                         extend = target.size.height > bounds.size.height;
                     }
                 }
@@ -169,8 +197,30 @@ impl Element for RegionContent {
                     target.origin.x = left;
                     target.size.width = bounds.right() - left;
                 }
+                Region::Status(column) => {
+                    // Resolve after the split's prepaint so footer and tool panel
+                    // use the same current-frame column boundary during resizing.
+                    let edge = if columns::conversation_edge(area).is_some() {
+                        self.measurements
+                            .editor_left
+                            .get()
+                            .clamp(bounds.left(), bounds.right())
+                    } else {
+                        bounds.left()
+                    };
+                    if matches!(column, StatusColumn::Conversation) {
+                        target.size.width = edge - bounds.left();
+                    } else {
+                        target.origin.x = edge;
+                        target.size.width = bounds.right() - edge;
+                    }
+                }
                 _ => {}
             }
+        }
+        if target.size.width <= px(0.) || target.size.height <= px(0.) {
+            self.child = None;
+            return;
         }
         let available = target.size.map(AvailableSpace::Definite);
         if extend {

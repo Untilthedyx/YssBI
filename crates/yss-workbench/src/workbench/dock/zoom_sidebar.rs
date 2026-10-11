@@ -1,5 +1,10 @@
 //! Render the existing sidebar panels beside a zoomed conversation from the root topology.
-use super::super::{Workbench, layout::columns, sidebar};
+use super::super::{
+    Workbench,
+    layout::columns,
+    sidebar,
+    status_bar::{ColumnStatusBar, StatusColumn},
+};
 use gpui_kit::component::{
     ActiveTheme, AxisExt,
     dock::{DockArea, DockPlacement, PaneNode, PaneRef, PanelHandle},
@@ -36,15 +41,18 @@ impl RenderOnce for Sidebar {
             .h_full()
             .flex_shrink_0()
             .overflow_hidden()
+            .flex()
+            .flex_col()
             .bg(cx.theme().sidebar)
-            .child(render_node(
+            .child(div().flex_1().min_h_0().min_w_0().child(render_node(
                 &node,
                 &self.area,
                 &self.workbench,
                 &self.navigation_headers,
                 window,
                 cx,
-            ))
+            )))
+            .child(ColumnStatusBar::new(self.workbench, StatusColumn::Left))
             .into_any_element()
     }
 }

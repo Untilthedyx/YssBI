@@ -30,15 +30,14 @@ impl Workbench {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.is_closing(cx)
+        if self.project.is_none()
+            || self.is_closing(cx)
             || self.assistant.read(cx).is_reopening()
             || self.dock.read(cx).is_locked()
         {
             return;
         }
-        if self.project.is_none() {
-            self.show_assistant(window, cx);
-        } else if self.conversation_window_open(cx) {
+        if self.conversation_window_open(cx) {
             self.close_conversation_window(window, cx);
         } else {
             self.assistant

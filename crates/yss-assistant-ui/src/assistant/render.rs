@@ -2,7 +2,7 @@ use super::{
     CancelResponse, ConversationPanel,
     projection::{Turn, TurnState},
 };
-use gpui_kit::component::{ActiveTheme, Sizable, clipboard::Clipboard};
+use gpui_kit::component::{ActiveTheme, Sizable, clipboard::Clipboard, shimmer::ShimmerText};
 use gpui_kit::{
     AnyElement, Context, Empty, IntoElement, Render, SharedString, Window, div, prelude::*,
 };
@@ -35,19 +35,28 @@ impl ConversationPanel {
     fn status(&self, cx: &mut Context<Self>) -> AnyElement {
         let latest = self.transcript.turns.last();
         let error = self.stream_error.as_ref().or(self.error.as_ref());
-        let text = if let Some(error) = error {
-            error.clone()
+        let (text, active) = if let Some(error) = error {
+            (error.clone(), false)
         } else if self.refreshing {
-            yss_ui::text::t("native.assistant.restoring").into()
+            (yss_ui::text::t("native.assistant.restoring").into(), true)
         } else if !self.model_available() {
-            yss_ui::text::t("native.assistant.configureModelHint").into()
+            (
+                yss_ui::text::t("native.assistant.configureModelHint").into(),
+                false,
+            )
         } else if self.stopping {
-            yss_ui::text::t("native.assistant.waitingForStop").into()
+            (
+                yss_ui::text::t("native.assistant.waitingForStop").into(),
+                false,
+            )
         } else if self.running() {
-            latest
-                .and_then(|turn| turn.output.activity.as_ref())
-                .map(super::activity::Activity::label)
-                .unwrap_or_else(|| yss_ui::text::t("native.assistant.processing").into())
+            (
+                latest
+                    .and_then(|turn| turn.output.activity.as_ref())
+                    .map(super::activity::Activity::label)
+                    .unwrap_or_else(|| yss_ui::text::t("native.assistant.processing").into()),
+                true,
+            )
         } else {
             return Empty.into_any_element();
         };
@@ -61,7 +70,13 @@ impl ConversationPanel {
             } else {
                 cx.theme().muted_foreground
             })
-            .child(text)
+            .child(if active {
+                ShimmerText::new(text)
+                    .id("assistant-status")
+                    .into_any_element()
+            } else {
+                text.into_any_element()
+            })
             .into_any_element()
     }
     pub(super) fn render_turn(&self, turn: &Turn, cx: &mut Context<Self>) -> AnyElement {

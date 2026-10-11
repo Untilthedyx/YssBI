@@ -758,6 +758,7 @@
     "details": "详细信息",
     "logs": "日志",
     "output": "输出",
+    "results": "结果",
     "problems": "问题",
     "problemsLocate": "定位问题",
     "problemsRelated": "关联位置",
@@ -1510,7 +1511,7 @@
   "settings": {
     "knowledge": {
       "updated": "上次重建：%{value}",
-      "title": "项目知识库",
+      "title": "知识库",
       "description": "选择项目 Markdown 文档供 AI 按需检索。命中的片段会发送给当前模型；修改正文后请重建。",
       "builtin": "内置统计方法知识始终可用。对话不会自动加入知识库。",
       "noProject": "打开项目后可管理文档来源。",
@@ -2503,9 +2504,6 @@
       "emptySchemaProbe": "空输入结构探测 · %{value0}",
       "locateFailedNode": "定位失败节点",
       "toggleLeftSidebar": "切换左侧栏",
-      "runOutput": "运行输出",
-      "runResults": "运行结果",
-      "toggleBottomPanel": "切换底部工具区",
       "properties": "属性",
       "toggleRightSidebar": "切换右侧栏",
       "nodeCount": "%{value0} 个节点",

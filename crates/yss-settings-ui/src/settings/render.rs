@@ -81,15 +81,12 @@ impl Render for SettingsPanel {
                     .with_group_variant(GroupBoxVariant::Normal)
                     .pages([
                         SettingPage::new(t("settings.sections.ai"))
-                            .icon(IconName::Bot)
                             .header_style(&hidden_header)
                             .groups(groups),
                         SettingPage::new(t("settings.knowledge.title"))
-                            .icon(IconName::Search)
                             .header_style(&hidden_header)
                             .groups(knowledge),
                         SettingPage::new(t("settings.sections.appearance"))
-                            .icon(IconName::Languages)
                             .header_style(&hidden_header)
                             .group(category_header("settings.sections.appearance"))
                             .group(appearance),

@@ -1,14 +1,66 @@
-//! Panel shortcuts and graph statistics follow the root DockArea's visible editor regions.
+//! Each visible Dock column owns its shortcuts and graph statistics.
 use super::{Workbench, layout::columns, menus::WorkbenchPanel};
 use crate::canvas::GraphCanvas;
 use gpui_kit::assets::IconName;
+use gpui_kit::base::TestSupportExt;
 use gpui_kit::component::{
-    ActiveTheme, Disableable, Icon, Selectable, Sizable,
+    Disableable, Icon, Selectable, Sizable,
     button::{Button, ButtonVariants},
     dock::DockPlacement,
+    status_bar::StatusBar,
     tooltip::Tooltip,
 };
-use gpui_kit::{Context, Entity, IntoElement, Window, div, prelude::*, px};
+use gpui_kit::{
+    App, Context, Entity, IntoElement, Pixels, RenderOnce, WeakEntity, Window, div, prelude::*, px,
+};
+
+pub(super) const STATUS_BAR_HEIGHT: Pixels = px(28.);
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum StatusColumn {
+    Left,
+    Conversation,
+    Editor,
+    Right,
+}
+
+#[derive(IntoElement)]
+pub(super) struct ColumnStatusBar {
+    owner: WeakEntity<Workbench>,
+    column: StatusColumn,
+}
+
+impl ColumnStatusBar {
+    pub(super) fn new(owner: WeakEntity<Workbench>, column: StatusColumn) -> Self {
+        Self { owner, column }
+    }
+}
+
+impl RenderOnce for ColumnStatusBar {
+    fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
+        // Dock's renderer only constructs this component. Read Dock after its
+        // render borrow has ended, when GPUI renders the child.
+        let bar = self
+            .owner
+            .upgrade()
+            .map(|owner| owner.update(cx, |owner, cx| owner.column_status_bar(self.column, cx)))
+            .unwrap_or_else(StatusBar::new);
+        let id = match self.column {
+            StatusColumn::Left => "statusbar-left",
+            StatusColumn::Conversation => "statusbar-conversation",
+            StatusColumn::Editor => "statusbar-editor",
+            StatusColumn::Right => "statusbar-right",
+        };
+        div()
+            .id(id)
+            .w_full()
+            .min_w_0()
+            .h(STATUS_BAR_HEIGHT)
+            .flex_shrink_0()
+            .child(bar.w_full().h_full().py_0().gap_0())
+            .test_support()
+    }
+}
 
 impl Workbench {
     pub(super) fn observe_graph_status(
@@ -28,31 +80,96 @@ impl Workbench {
             }));
     }
 
-    pub(super) fn render_status_bar(&self, cx: &mut Context<Self>) -> impl IntoElement + use<> {
+    fn column_status_bar(&self, column: StatusColumn, cx: &mut Context<Self>) -> StatusBar {
         let dock = self.dock.read(cx);
+        let has_project = self.project.is_some();
         let conversation_zoomed = columns::conversation_zoomed(dock);
-        let left_width = if self.project.is_some()
+        let left_visible = has_project
             && dock.is_dock_open(DockPlacement::Left)
-            && (!dock.is_zoomed() || conversation_zoomed)
-        {
-            dock.dock_size(DockPlacement::Left).unwrap_or_default()
-        } else {
-            px(0.)
-        };
-        let conversation_width =
-            if self.project.is_some() && columns::conversation_edge(dock).is_some() {
-                self.dock_renderer.conversation_width()
-            } else {
-                px(0.)
-            };
-        let content_left = left_width + conversation_width;
-        let right_width = (self.project.is_some()
-            && dock.is_dock_open(DockPlacement::Right)
-            && !dock.is_zoomed())
-        .then(|| dock.dock_size(DockPlacement::Right))
-        .flatten();
-        let graph_status = self
-            .project
+            && (!dock.is_zoomed() || conversation_zoomed);
+        let conversation_visible =
+            has_project && (conversation_zoomed || columns::conversation_edge(dock).is_some());
+        let right_visible =
+            has_project && dock.is_dock_open(DockPlacement::Right) && !dock.is_zoomed();
+
+        let bar = StatusBar::new();
+        match column {
+            StatusColumn::Left => bar.left(
+                div()
+                    .flex()
+                    .items_center()
+                    .child(self.left_status_button(cx))
+                    .when(!conversation_visible, |row| {
+                        row.child(self.conversation_window_button(cx))
+                    }),
+            ),
+            StatusColumn::Conversation => bar
+                .left(
+                    div()
+                        .flex()
+                        .items_center()
+                        .when(!left_visible, |row| row.child(self.left_status_button(cx)))
+                        .child(self.conversation_window_button(cx)),
+                )
+                .when(conversation_zoomed && !right_visible, |bar| {
+                    bar.right(self.right_status_button(cx))
+                }),
+            StatusColumn::Editor => bar
+                .left(
+                    div()
+                        .flex()
+                        .items_center()
+                        .when(!left_visible && !conversation_visible, |row| {
+                            row.child(self.left_status_button(cx))
+                                .child(self.conversation_window_button(cx))
+                        })
+                        .child(self.panel_button(
+                            "status-problems",
+                            IconName::TriangleAlert,
+                            crate::text::t("detail.sections.diagnostics"),
+                            WorkbenchPanel::Problems,
+                            cx,
+                        ))
+                        .child(self.panel_button(
+                            "status-output",
+                            IconName::SquareTerminal,
+                            crate::text::t("panel.output"),
+                            WorkbenchPanel::Output,
+                            cx,
+                        ))
+                        .child(self.panel_button(
+                            "status-results",
+                            IconName::Table,
+                            crate::text::t("panel.results"),
+                            WorkbenchPanel::Results,
+                            cx,
+                        ))
+                        .child(self.panel_button(
+                            "status-logs",
+                            IconName::FileText,
+                            crate::text::t("log.title"),
+                            WorkbenchPanel::Logs,
+                            cx,
+                        )),
+                )
+                .right(
+                    div()
+                        .flex()
+                        .items_center()
+                        .when(!right_visible, |row| {
+                            row.child(self.right_status_button(cx))
+                        })
+                        .when_some(self.graph_status(cx), |row, status| {
+                            row.child(status.render())
+                        }),
+                ),
+            StatusColumn::Right => bar.right(self.right_status_button(cx)),
+        }
+    }
+
+    fn graph_status(&self, cx: &Context<Self>) -> Option<GraphStatus> {
+        let dock = self.dock.read(cx);
+        self.project
             .as_ref()
             .and_then(|_| self.active_editor_panel(cx))
             .and_then(|panel| {
@@ -65,158 +182,32 @@ impl Workbench {
                 }
                 let canvas = panel.view().downcast::<GraphCanvas>().ok()?;
                 Some(GraphStatus::read(canvas.read(cx)))
-            });
-        div()
-            .h(px(28.))
-            .flex_shrink_0()
-            .flex()
-            .items_center()
-            .border_t_1()
-            .border_color(cx.theme().status_bar_border)
-            .bg(cx.theme().status_bar)
-            .text_xs()
-            .text_color(cx.theme().muted_foreground)
-            .when(content_left > px(0.), |view| {
-                view.child(
-                    div()
-                        .w(content_left)
-                        .flex_shrink_0()
-                        .flex()
-                        .items_center()
-                        .when(left_width > px(0.), |view| {
-                            view.child(
-                                div()
-                                    .when(conversation_width > px(0.), |view| view.w(left_width))
-                                    .pl_2()
-                                    .child(self.dock_button(
-                                        "status-left",
-                                        IconName::PanelLeft,
-                                        crate::text::t("native.workbench.toggleLeftSidebar"),
-                                        DockPlacement::Left,
-                                        cx,
-                                    )),
-                            )
-                        })
-                        .child(self.conversation_window_button(cx)),
-                )
-            })
-            .child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .h_full()
-                    .pr_2()
-                    .flex()
-                    .items_center()
-                    .overflow_hidden()
-                    .when(!conversation_zoomed, |view| {
-                        view.child(self.panel_button(
-                            "status-problems",
-                            IconName::TriangleAlert,
-                            crate::text::t("detail.sections.diagnostics"),
-                            WorkbenchPanel::Problems,
-                            cx,
-                        ))
-                        .child(self.panel_button(
-                            "status-output",
-                            IconName::SquareTerminal,
-                            crate::text::t("native.workbench.runOutput"),
-                            WorkbenchPanel::Output,
-                            cx,
-                        ))
-                        .child(self.panel_button(
-                            "status-results",
-                            IconName::Table,
-                            crate::text::t("native.workbench.runResults"),
-                            WorkbenchPanel::Results,
-                            cx,
-                        ))
-                        .child(self.panel_button(
-                            "status-logs",
-                            IconName::FileText,
-                            crate::text::t("log.title"),
-                            WorkbenchPanel::Logs,
-                            cx,
-                        ))
-                    })
-                    .child(div().flex_1().min_w_0())
-                    .when(right_width.is_none(), |view| {
-                        view.child(self.status_controls(
-                            left_width == px(0.),
-                            content_left == px(0.),
-                            cx,
-                        ))
-                    })
-                    .when_some(graph_status, |view, status| view.child(status.render())),
-            )
-            .when_some(right_width, |view, width| {
-                view.child(
-                    div()
-                        .w(width)
-                        .flex_shrink_0()
-                        .pr_2()
-                        .flex()
-                        .justify_end()
-                        .child(self.status_controls(
-                            left_width == px(0.),
-                            content_left == px(0.),
-                            cx,
-                        )),
-                )
             })
     }
 
-    fn status_controls(
-        &self,
-        show_left: bool,
-        show_conversation: bool,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement + use<> {
-        div()
-            .flex_shrink_0()
-            .flex()
-            .items_center()
-            .when(show_left, |view| {
-                view.child(self.dock_button(
-                    "status-left",
-                    IconName::PanelLeft,
-                    crate::text::t("native.workbench.toggleLeftSidebar"),
-                    DockPlacement::Left,
-                    cx,
-                ))
-            })
-            .child(self.dock_button(
-                "status-bottom",
-                IconName::PanelBottom,
-                crate::text::t("native.workbench.toggleBottomPanel"),
-                DockPlacement::Bottom,
-                cx,
-            ))
-            .child(div().w(px(1.)).h_3().mx_2().bg(cx.theme().border))
-            .child(self.panel_button(
-                "status-details",
-                IconName::Inspector,
-                crate::text::t("native.workbench.properties"),
-                WorkbenchPanel::Details,
-                cx,
-            ))
-            .when(show_conversation, |view| {
-                view.child(self.conversation_window_button(cx))
-            })
-            .child(self.dock_button(
-                "status-right",
-                IconName::PanelRight,
-                crate::text::t("native.workbench.toggleRightSidebar"),
-                DockPlacement::Right,
-                cx,
-            ))
+    fn left_status_button(&self, cx: &mut Context<Self>) -> Button {
+        self.dock_button(
+            "status-left",
+            IconName::PanelLeft,
+            crate::text::t("native.workbench.toggleLeftSidebar"),
+            DockPlacement::Left,
+            cx,
+        )
+    }
+
+    fn right_status_button(&self, cx: &mut Context<Self>) -> Button {
+        self.dock_button(
+            "status-right",
+            IconName::PanelRight,
+            crate::text::t("native.workbench.toggleRightSidebar"),
+            DockPlacement::Right,
+            cx,
+        )
     }
 
     fn conversation_window_button(&self, cx: &mut Context<Self>) -> Button {
         let open = self.project.is_some() && self.conversation_window_open(cx);
-        let label = if self.project.is_none() {
-            "panel.assistant"
-        } else if open {
+        let label = if open {
             "bottomBar.closeConversation"
         } else {
             "bottomBar.openConversation"
@@ -229,7 +220,8 @@ impl Workbench {
             .tooltip(crate::text::translate(label))
             .selected(open)
             .disabled(
-                self.assistant.read(cx).is_reopening()
+                self.project.is_none()
+                    || self.assistant.read(cx).is_reopening()
                     || self.is_closing(cx)
                     || self.dock.read(cx).is_locked(),
             )
@@ -252,7 +244,11 @@ impl Workbench {
             .ghost()
             .icon(Icon::new(icon).size_3())
             .tooltip(tooltip)
-            .selected(!self.dock.read(cx).is_zoomed() && self.panel_is_displayed(panel, cx))
+            .selected(
+                self.project.is_some()
+                    && !self.dock.read(cx).is_zoomed()
+                    && self.panel_is_displayed(panel, cx),
+            )
             .disabled(self.project.is_none() || self.is_closing(cx))
             .on_click(cx.listener(move |view, _, window, cx| {
                 view.toggle_panel(panel, window, cx);
@@ -275,7 +271,8 @@ impl Workbench {
             .icon(Icon::new(icon).size_3())
             .tooltip(tooltip)
             .selected(
-                dock.is_dock_open(placement)
+                self.project.is_some()
+                    && dock.is_dock_open(placement)
                     && (!dock.is_zoomed()
                         || placement == DockPlacement::Left && columns::conversation_zoomed(dock)),
             )

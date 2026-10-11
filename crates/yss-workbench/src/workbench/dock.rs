@@ -6,7 +6,10 @@ mod watermark;
 mod zoom_sidebar;
 pub(super) use watermark::EmptyEditor;
 
-use super::{LogsPanel, OutputPanel, ProblemsPanel, ResultsPanel, Workbench, sidebar};
+use super::{
+    LogsPanel, OutputPanel, ProblemsPanel, ResultsPanel, Workbench, sidebar,
+    status_bar::{ColumnStatusBar, STATUS_BAR_HEIGHT, StatusColumn},
+};
 use gpui_kit::base::ResizeHandleContext;
 use gpui_kit::component::ElementExt;
 use gpui_kit::component::dock::{
@@ -54,10 +57,6 @@ pub(super) struct WorkbenchDock {
 }
 
 impl WorkbenchDock {
-    pub(super) fn conversation_width(&self) -> Pixels {
-        self.measurements.leading_width()
-    }
-
     pub(super) fn update_style(&self, area: &DockArea, cx: &App) {
         self.navigation_headers.retain_groups(area);
         let hide_strip = !area.is_zoomed()
@@ -99,6 +98,14 @@ impl DockAreaRenderer for WorkbenchDock {
         self.skin
             .center_frame(window, cx)
             .mb(self.center_bottom_margin.get())
+            .relative()
+            .pb(STATUS_BAR_HEIGHT)
+            .child(regions::status_bars(
+                self.area.clone(),
+                self.workbench.clone(),
+                self.measurements.clone(),
+                -self.center_bottom_margin.get(),
+            ))
             .on_prepaint(move |bounds, window, cx| {
                 let has_conversation = area.upgrade().is_some_and(|area| {
                     super::layout::columns::conversation_edge(area.read(cx)).is_some()
@@ -160,7 +167,20 @@ impl DockAreaRenderer for WorkbenchDock {
             )
             .into_any_element()
         } else {
-            content
+            div()
+                .size_full()
+                .flex()
+                .flex_col()
+                .child(div().flex_1().min_h_0().min_w_0().child(content))
+                .child(ColumnStatusBar::new(
+                    self.workbench.clone(),
+                    if dock.placement() == DockPlacement::Left {
+                        StatusColumn::Left
+                    } else {
+                        StatusColumn::Right
+                    },
+                ))
+                .into_any_element()
         }
     }
 
@@ -208,6 +228,24 @@ impl TabGroupRenderer for WorkbenchTabs {
                     measurements.record_edge(bounds.right(), &owner, window, cx);
                 }
             });
+        // The zoomed group is the sole center column, not an ordinary tab footer.
+        let frame = frame.when(group.is_zoomed(), |frame| {
+            frame.relative().pb(STATUS_BAR_HEIGHT).child(
+                div()
+                    .absolute()
+                    .bottom_0()
+                    .left_0()
+                    .right_0()
+                    .child(ColumnStatusBar::new(
+                        self.workbench.clone(),
+                        if conversation::matches(group) {
+                            StatusColumn::Conversation
+                        } else {
+                            StatusColumn::Editor
+                        },
+                    )),
+            )
+        });
         if conversation::matches(group) {
             return conversation::capture_close(frame, &self.workbench);
         }

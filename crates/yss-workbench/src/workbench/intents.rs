@@ -102,7 +102,11 @@ impl Workbench {
                 panel: UiPanel::Assistant,
             } => {
                 self.assistant_intent = Some(receipt.id);
-                self.show_assistant(window, cx);
+                if !self.show_assistant(window, cx)
+                    && let Some(intent) = self.assistant_intent.take()
+                {
+                    self.finish_intent(&intent, false, window, cx);
+                }
             }
             UiIntent::ShowPanel { panel } => {
                 let target = match panel {

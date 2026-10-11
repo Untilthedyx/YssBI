@@ -2,6 +2,7 @@
 use super::{
     Workbench,
     menus::{MenuCommand, WorkbenchPanel},
+    status_bar::{ColumnStatusBar, STATUS_BAR_HEIGHT, StatusColumn},
 };
 use crate::{
     canvas::{CancelRun, RunWholeGraph, SaveGraph},
@@ -11,6 +12,7 @@ use gpui_kit::assets::IconName;
 use gpui_kit::component::{
     ActiveTheme, Disableable, Icon, Sizable,
     button::{Button, ButtonVariants},
+    shimmer::ShimmerText,
 };
 use gpui_kit::{Context, IntoElement, MouseButton, Window, actions, div, prelude::*, rems};
 
@@ -153,15 +155,22 @@ impl Workbench {
                     .flex_1()
                     .min_h_0()
                     .relative()
-                    .child(self.dock.clone())
-                    .when(self.project.is_none(), |view| {
-                        view.child(
-                            div()
-                                .absolute()
-                                .inset_0()
-                                .bg(cx.theme().background)
-                                .child(self.render_welcome(window, cx)),
-                        )
+                    .child(if self.project.is_some() {
+                        self.dock.clone().into_any_element()
+                    } else {
+                        div()
+                            .size_full()
+                            .flex()
+                            .flex_col()
+                            .bg(cx.theme().background)
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .min_h_0()
+                                    .child(self.render_welcome(window, cx)),
+                            )
+                            .child(ColumnStatusBar::new(cx.weak_entity(), StatusColumn::Editor))
+                            .into_any_element()
                     })
                     .when(self.busy || self.closing, |view| {
                         view.child(
@@ -170,6 +179,7 @@ impl Workbench {
                                 .occlude()
                                 .absolute()
                                 .inset_0()
+                                .bottom(STATUS_BAR_HEIGHT)
                                 .bg(cx.theme().overlay)
                                 .flex()
                                 .items_center()
@@ -191,18 +201,16 @@ impl Workbench {
                                                 .child(progress.clone()),
                                         )
                                     } else {
-                                        view.gap_2()
-                                            .child(
-                                                Icon::new(IconName::LoaderCircle)
-                                                    .size_4()
-                                                    .text_color(cx.theme().muted_foreground),
-                                            )
-                                            .child(crate::text::t("native.assistant.processing"))
+                                        view.child(
+                                            ShimmerText::new(crate::text::t(
+                                                "native.assistant.processing",
+                                            ))
+                                            .id("workbench-operation-status"),
+                                        )
                                     }
                                 }),
                         )
                     }),
             )
-            .child(self.render_status_bar(cx))
     }
 }
