@@ -14,12 +14,14 @@ use yss_project::ProjectOperationError;
 use yss_project_identity::ProjectInstanceId;
 
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct GraphDocumentChange {
     pub changed: bool,
     pub document: Arc<GraphDocument>,
     pub projection_replacement: GraphProjectionReplacement,
     pub patch: yss_graph_document::GraphDocumentPatch,
     pub result_inputs: yss_graph_execution::result::GraphResultInputs,
+    pub dependencies: yss_graph_resource_contract::GraphDependencyManifest,
 }
 
 fn capture_editor_context(
@@ -57,6 +59,7 @@ fn build_graph_projection_replacement(
     (
         GraphProjectionReplacement,
         yss_graph_execution::result::GraphResultInputs,
+        yss_graph_resource_contract::GraphDependencyManifest,
     ),
     ResourceMutationApplicationError,
 > {
@@ -97,6 +100,7 @@ fn build_graph_projection_replacement(
             function_editor_projection,
         },
         result_inputs,
+        analysis.semantic_snapshot().dependencies().clone(),
     ))
 }
 
@@ -210,13 +214,14 @@ impl<'a> GraphDocumentEditor<'a> {
         mut self,
         application: &ApplicationState,
     ) -> Result<GraphDocumentChange, ResourceMutationApplicationError> {
-        let (projection_replacement, result_inputs) = build_graph_projection_replacement(
-            self.captured,
-            &mut self.context,
-            self.graph,
-            &self.document,
-            self.locale,
-        )?;
+        let (projection_replacement, result_inputs, dependencies) =
+            build_graph_projection_replacement(
+                self.captured,
+                &mut self.context,
+                self.graph,
+                &self.document,
+                self.locale,
+            )?;
         self.context.revalidate(self.captured)?;
         application
             .revalidate_captured_session(self.captured)
@@ -227,6 +232,7 @@ impl<'a> GraphDocumentEditor<'a> {
             projection_replacement,
             patch: self.patch,
             result_inputs,
+            dependencies,
         })
     }
 }

@@ -19,7 +19,7 @@ fn lm_chi2_aux(y: &Col<f64>, z_matrix: &yss_sci_linalg::Mat<f64>) -> Result<(f64
     if uss <= 0.0 {
         return Ok((0.0, 0));
     }
-    let svd = yss_sci_linalg::Svd::factor(z_matrix.as_ref())
+    let svd = yss_sci_linalg::Svd::factor_thin(z_matrix.as_ref())
         .map_err(|e| format!("lm_chi2_aux: SVD failed: {:?}", e))?;
     let s_sv = svd.values();
     let max_sv = s_sv.iter().next().copied().unwrap_or(0.0);

@@ -1145,6 +1145,12 @@
         "target": null
       },
       {
+        "name": "yss-graph-diagnostics",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
         "name": "yss-graph-document",
         "kind": "normal",
         "optional": false,
@@ -2065,12 +2071,6 @@
     "manifest": "crates/yss-ui/Cargo.toml",
     "dependencies": [
       {
-        "name": "yss-application",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
         "name": "yss-canonical-hash",
         "kind": "normal",
         "optional": false,
@@ -2089,55 +2089,7 @@
         "target": null
       },
       {
-        "name": "yss-graph-diagnostics",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-graph-editor",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-graph-execution",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-harness-contract",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
         "name": "yss-i18n",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-node-catalog",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-node-protocol",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-project-identity",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-project",
         "kind": "normal",
         "optional": false,
         "target": null

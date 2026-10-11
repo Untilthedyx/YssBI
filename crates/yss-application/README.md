@@ -65,6 +65,9 @@ Harness 与界面意图共用 `ProjectResourceRef`；提交通过 Harness gatewa
 资源身份仍来自同一 Project 快照。宿主持有该投影并管理搜索、展开和选择，不复制另一份节点目录，
 不通过标题重建创建描述。兼容查询仍使用捕获版本的当前图，创建与连接由原图编辑事务校验。
 
+`ActivityText::resolve_with` 由调用方提供翻译函数，仅解析 `Key`；`Literal` 原样返回，不进行翻译或插值。
+这样 Workbench 与图节点菜单可以复用同一文本契约，而共享 UI 翻译模块不必依赖 Application。
+
 ### 桌面初始化
 
 [ApplicationServices::initialize](src/runtime.rs) 接收 `ApplicationPaths`（应用数据目录与示例目录）和 Harness 端口组装回调，返回拥有 ApplicationState、项目登记、Harness、Plugin Manager 和 watcher 的服务集合。它不访问窗口或桌面框架。宿主保持这些服务和异步执行器存活，并在 UI 线程以外执行阻塞业务调用。

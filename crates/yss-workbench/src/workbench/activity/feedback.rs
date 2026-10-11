@@ -20,6 +20,10 @@ impl ActivityPanel {
         state: ReadState,
         cx: &mut Context<Self>,
     ) {
+        if state == ReadState::Loading && self.document.is_some() {
+            // Keep a useful snapshot and any previous failure visible until the read settles.
+            return;
+        }
         if self.read_state != state {
             self.read_state = state;
             cx.notify();
@@ -29,7 +33,7 @@ impl ActivityPanel {
     pub(super) fn title_text(&self) -> String {
         self.document.as_ref().map_or_else(
             || crate::text::translate("panel.assistantConversations"),
-            |document| activity_text(&document.title),
+            |document| document.title.resolve_with(translate),
         )
     }
 
@@ -55,7 +59,7 @@ impl ActivityPanel {
                         .size_5()
                         .icon(tool_icon(tool.icon))
                         .disabled(self.conversation_busy(cx))
-                        .tooltip(activity_text(&tool.label))
+                        .tooltip(tool.label.resolve_with(translate))
                         .on_click(cx.listener(move |view, _, _, cx| {
                             if view.accepts(&expected) {
                                 cx.emit(ActivityEvent::Tool(id.clone()));
@@ -125,14 +129,14 @@ impl ActivityPanel {
                         .flex_col()
                         .gap_2()
                         .text_xs()
-                        .child(activity_text(title))
+                        .child(title.resolve_with(translate))
                         .child(
                             div()
                                 .text_color(cx.theme().muted_foreground)
                                 .child(if filtered {
                                     crate::text::translate("panel.assistantNoMatchingConversations")
                                 } else {
-                                    activity_text(description)
+                                    description.resolve_with(translate)
                                 }),
                         )
                         .into_any_element(),

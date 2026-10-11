@@ -15,7 +15,6 @@ impl DocumentEditor {
             self.refresh(window, cx);
         }
         self.resume_autosave(window, cx);
-        cx.emit(super::DocumentEvent::Changed);
         cx.notify();
     }
     pub fn prepare_save(&mut self, cx: &mut Context<Self>) -> Option<DocumentSaveRequest> {
@@ -73,7 +72,6 @@ impl DocumentEditor {
         }
         self.resume_autosave(window, cx);
         cx.emit(gpui_kit::component::dock::PanelEvent::LayoutChanged);
-        cx.emit(super::DocumentEvent::Changed);
         cx.notify();
     }
 
@@ -155,7 +153,6 @@ impl DocumentEditor {
                     view.refresh(window, cx);
                 }
                 view.resume_autosave(window, cx);
-                cx.emit(super::DocumentEvent::Changed);
                 cx.notify();
             });
         }));

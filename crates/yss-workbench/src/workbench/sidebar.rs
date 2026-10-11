@@ -3,15 +3,120 @@ use super::{Workbench, activity::ActivityPanel, layout::columns, menus::Workbenc
 use crate::plugins::PluginsSidebar;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{
-    ActiveTheme, Disableable, Icon, Selectable, Sizable,
+    ActiveTheme, Disableable, Icon, Selectable, Sizable, Theme,
     button::{Button, ButtonCustomVariant, ButtonVariants},
     dock::{BasePanelView, DockArea, DockPlacement, NodeId, PaneRef, PanelHandle},
     menu::{DropdownMenu, PopupMenuItem},
 };
 use gpui_kit::{
-    AnyElement, App, Context, Empty, IntoElement, WeakEntity, Window, div, prelude::*, px,
+    AnyElement, App, AppContext, Context, Empty, Entity, EntityId, IntoElement, Render,
+    StyleRefinement, Subscription, WeakEntity, Window, div, prelude::*, px,
 };
-use std::{any::TypeId, sync::Arc};
+use std::{any::TypeId, cell::RefCell, collections::BTreeMap, sync::Arc};
+
+/// Shared by the regular and conversation-zoom dock renderers. Each group keeps
+/// its control identity until that group leaves the dock topology.
+#[derive(Default)]
+pub(super) struct NavigationHeaders {
+    groups: RefCell<BTreeMap<NodeId, Entity<Navigation>>>,
+}
+
+impl NavigationHeaders {
+    pub(super) fn retain_groups(&self, dock: &DockArea) {
+        self.groups.borrow_mut().retain(|node, _| {
+            placements()
+                .into_iter()
+                .filter_map(|placement| dock.layout(placement))
+                .any(|tree| tree.find_node(*node).is_some())
+        });
+    }
+
+    fn render(
+        &self,
+        node: NodeId,
+        active: Option<EntityId>,
+        workbench: &WeakEntity<Workbench>,
+        cx: &mut App,
+    ) -> AnyElement {
+        // Read broad owners outside the cached view. A graph notification can
+        // redraw the dock without changing any of these four controls.
+        let state = NavigationState::read(active, workbench, cx);
+        let mut groups = self.groups.borrow_mut();
+        let navigation = groups.entry(node).or_insert_with(|| {
+            cx.new(|cx| Navigation {
+                state,
+                workbench: workbench.clone(),
+                _theme: cx.observe_global::<Theme>(|_, cx| cx.notify()),
+            })
+        });
+        if navigation.read(cx).state != state {
+            navigation.update(cx, |navigation, cx| {
+                navigation.state = state;
+                cx.notify();
+            });
+        }
+        // Entity alone is not a rendering boundary. GPUI requires an explicit
+        // cached view with definite bounds; the parent supplies the row height.
+        navigation
+            .clone()
+            .cached(
+                StyleRefinement::default()
+                    .w(px(124.))
+                    .h_full()
+                    .flex_shrink_0(),
+            )
+            .into_any_element()
+    }
+}
+
+fn placements() -> [DockPlacement; 4] {
+    [
+        DockPlacement::Left,
+        DockPlacement::Center,
+        DockPlacement::Right,
+        DockPlacement::Bottom,
+    ]
+}
+
+#[derive(Clone, Copy, PartialEq)]
+struct NavigationState {
+    buttons: [(bool, bool); 4],
+    locale: &'static str,
+}
+
+impl NavigationState {
+    fn read(active: Option<EntityId>, workbench: &WeakEntity<Workbench>, cx: &App) -> Self {
+        let buttons = workbench.upgrade().map_or([(false, true); 4], |owner| {
+            let view = owner.read(cx);
+            let closing = view.is_closing(cx);
+            let targets = ["project", "nodes", "assistant"]
+                .map(|key| view.activities.get(key).and_then(WeakEntity::upgrade));
+            let targets = [
+                targets[0].as_ref().map(Entity::entity_id),
+                targets[1].as_ref().map(Entity::entity_id),
+                targets[2].as_ref().map(Entity::entity_id),
+                Some(view.plugins_sidebar.entity_id()),
+            ];
+            std::array::from_fn(|index| {
+                let target = targets[index];
+                (
+                    target.is_some() && target == active,
+                    closing || (index != 2 && target.is_none()),
+                )
+            })
+        });
+        Self {
+            buttons,
+            locale: crate::text::locale(),
+        }
+    }
+}
+
+struct Navigation {
+    state: NavigationState,
+    workbench: WeakEntity<Workbench>,
+    _theme: Subscription,
+}
 
 impl Workbench {
     fn select_sidebar_panel(
@@ -47,21 +152,17 @@ pub(super) fn render_header(
     node: NodeId,
     area: &WeakEntity<DockArea>,
     workbench: &WeakEntity<Workbench>,
+    headers: &NavigationHeaders,
     cx: &mut App,
 ) -> AnyElement {
     let Some(dock) = area.upgrade() else {
         return Empty.into_any_element();
     };
     let dock = dock.read(cx);
-    let group = [
-        DockPlacement::Left,
-        DockPlacement::Center,
-        DockPlacement::Right,
-        DockPlacement::Bottom,
-    ]
-    .into_iter()
-    .filter_map(|placement| dock.layout(placement))
-    .find_map(|tree| tree.find_node(node));
+    let group = placements()
+        .into_iter()
+        .filter_map(|placement| dock.layout(placement))
+        .find_map(|tree| tree.find_node(node));
     let Some(PaneRef::Tabs {
         panels: ids,
         active_ix,
@@ -70,101 +171,19 @@ pub(super) fn render_header(
         return Empty.into_any_element();
     };
     let active = ids.get(active_ix).copied();
-    let panels = ids
-        .iter()
-        .filter_map(|id| dock.panel(*id).cloned())
-        .collect::<Vec<_>>();
     let zoomed = dock.zoomed_group() == Some(node);
     let navigation_active = active
         .and_then(|id| dock.panel(id))
         .is_some_and(is_navigation);
     let other_panels = navigation_active
-        && panels
+        && ids
             .iter()
+            .filter_map(|id| dock.panel(*id))
             .any(|panel| panel.visible(cx) && !is_navigation(panel));
-    let navigation = [
-        (
-            "sidebar-project",
-            IconName::Folder,
-            crate::text::t("activityBar.project"),
-            WorkbenchPanel::Project,
-        ),
-        (
-            "sidebar-nodes",
-            IconName::Frame,
-            crate::text::t("native.workbench.nodeCatalog"),
-            WorkbenchPanel::Nodes,
-        ),
-        (
-            "sidebar-assistant",
-            IconName::MessageSquareText,
-            crate::text::t("panel.assistant"),
-            WorkbenchPanel::Assistant,
-        ),
-        (
-            "sidebar-plugins",
-            IconName::Puzzle,
-            crate::text::t("activityBar.plugins"),
-            WorkbenchPanel::Plugins,
-        ),
-    ]
-    .map(|(id, icon, title, panel)| {
-        let (active, disabled) = workbench.upgrade().map_or((false, true), |owner| {
-            let view = owner.read(cx);
-            let target = view.dock_panel(panel);
-            let active = target
-                .as_ref()
-                .is_some_and(|(target, _)| active == Some(target.panel_id(cx)));
-            let unavailable = panel != WorkbenchPanel::Assistant && target.is_none();
-            (active, unavailable || view.is_closing(cx))
-        });
-        div()
-            .relative()
-            .h_full()
-            .flex()
-            .items_center()
-            .child(
-                Button::new(id)
-                    .custom(
-                        ButtonCustomVariant::new(cx)
-                            .foreground(if active {
-                                cx.theme().sidebar_foreground
-                            } else {
-                                cx.theme().muted_foreground
-                            })
-                            .hover(cx.theme().sidebar_accent.opacity(0.5))
-                            .active(cx.theme().sidebar_accent.opacity(0.5)),
-                    )
-                    .size(px(28.))
-                    .p_0()
-                    .rounded(px(4.))
-                    // A child icon keeps its explicit pixel size independent of Button's size.
-                    .child(Icon::new(icon).with_size(px(16.)))
-                    .accessibility_label(title.clone())
-                    .tooltip(title)
-                    .selected(active)
-                    .disabled(disabled)
-                    .on_click({
-                        let workbench = workbench.clone();
-                        move |_, window, cx| {
-                            let _ = workbench.update(cx, |view, cx| {
-                                view.select_sidebar_panel(panel, window, cx);
-                            });
-                        }
-                    }),
-            )
-            .when(active, |item| {
-                item.child(
-                    div()
-                        .absolute()
-                        .bottom_0()
-                        .left(px(6.))
-                        .right(px(6.))
-                        .h(px(2.))
-                        .bg(cx.theme().sidebar_primary),
-                )
-            })
-    });
+    let active_entity = active
+        .and_then(|id| dock.panel(id))
+        .map(|panel| panel.view().entity_id());
+    let navigation = headers.render(node, active_entity, workbench, cx);
     let controls = div()
         .flex_1()
         .min_w_0()
@@ -182,9 +201,21 @@ pub(super) fn render_header(
                     .tooltip(crate::text::t("native.workbench.switchPanel"))
                     .dropdown_menu({
                         let area = area.clone();
-                        let panels = panels.clone();
                         move |mut menu, _, cx| {
-                            for panel in &panels {
+                            let Some(dock) = area.upgrade() else {
+                                return menu;
+                            };
+                            let dock = dock.read(cx);
+                            let group = placements()
+                                .into_iter()
+                                .filter_map(|placement| dock.layout(placement))
+                                .find_map(|tree| tree.find_node(node));
+                            let Some(PaneRef::Tabs { panels, .. }) =
+                                group.map(|group| group.kind())
+                            else {
+                                return menu;
+                            };
+                            for panel in panels.iter().filter_map(|id| dock.panel(*id)) {
                                 if !panel.visible(cx) {
                                     continue;
                                 }
@@ -239,15 +270,99 @@ pub(super) fn render_header(
         .bg(cx.theme().sidebar)
         .text_color(cx.theme().sidebar_foreground)
         .child(div().flex_1().min_w_0())
-        .child(
-            div()
-                .flex()
-                .h_full()
-                .flex_shrink_0()
-                .items_center()
-                .gap(px(4.))
-                .children(navigation),
-        )
+        .child(navigation)
         .child(controls)
+        .into_any_element()
+}
+
+impl Render for Navigation {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        render_navigation(self, cx)
+    }
+}
+
+fn render_navigation(view: &Navigation, cx: &mut App) -> AnyElement {
+    let navigation = [
+        (
+            "sidebar-project",
+            IconName::Folder,
+            crate::text::t("activityBar.project"),
+            WorkbenchPanel::Project,
+        ),
+        (
+            "sidebar-nodes",
+            IconName::Frame,
+            crate::text::t("native.workbench.nodeCatalog"),
+            WorkbenchPanel::Nodes,
+        ),
+        (
+            "sidebar-assistant",
+            IconName::MessageSquareText,
+            crate::text::t("panel.assistant"),
+            WorkbenchPanel::Assistant,
+        ),
+        (
+            "sidebar-plugins",
+            IconName::Puzzle,
+            crate::text::t("activityBar.plugins"),
+            WorkbenchPanel::Plugins,
+        ),
+    ]
+    .into_iter()
+    .zip(view.state.buttons)
+    .map(|((id, icon, title, panel), (active, disabled))| {
+        div()
+            .relative()
+            .h_full()
+            .flex()
+            .items_center()
+            .child(
+                Button::new(id)
+                    .custom(
+                        ButtonCustomVariant::new(cx)
+                            .foreground(if active {
+                                cx.theme().sidebar_foreground
+                            } else {
+                                cx.theme().muted_foreground
+                            })
+                            .hover(cx.theme().sidebar_accent.opacity(0.5))
+                            .active(cx.theme().sidebar_accent.opacity(0.5)),
+                    )
+                    .size(px(28.))
+                    .p_0()
+                    .rounded(px(4.))
+                    // A child icon keeps its explicit pixel size independent of Button's size.
+                    .child(Icon::new(icon).with_size(px(16.)))
+                    .accessibility_label(title.clone())
+                    .tooltip(title)
+                    .selected(active)
+                    .disabled(disabled)
+                    .on_click({
+                        let workbench = view.workbench.clone();
+                        move |_, window, cx| {
+                            let _ = workbench.update(cx, |view, cx| {
+                                view.select_sidebar_panel(panel, window, cx);
+                            });
+                        }
+                    }),
+            )
+            .when(active, |item| {
+                item.child(
+                    div()
+                        .absolute()
+                        .bottom_0()
+                        .left(px(6.))
+                        .right(px(6.))
+                        .h(px(2.))
+                        .bg(cx.theme().sidebar_primary),
+                )
+            })
+    });
+    div()
+        .flex()
+        .size_full()
+        .items_center()
+        .gap(px(4.))
+        .children(navigation)
         .into_any_element()
 }

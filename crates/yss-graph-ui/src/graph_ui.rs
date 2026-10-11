@@ -1,7 +1,9 @@
 //! Graph editing presentation over Application-owned graph state.
 pub mod canvas;
+pub mod catalog_rows;
 pub mod details;
 pub mod drag;
+pub mod feedback;
 mod graph_properties;
 mod node_creation;
 mod opened_graph;

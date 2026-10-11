@@ -6,10 +6,10 @@ use super::{
 };
 use gpui_kit::{App, Context, IntoElement, RenderOnce, SharedString, Task, WeakEntity, Window};
 use std::sync::Arc;
+use yss_desktop_services::resources::ResourceCatalog;
 use yss_harness_contract::{
     AssistantToolIdentity, AssistantToolInspection, ProjectResourceRef, ToolInvocationId,
 };
-use yss_ui::resources::ResourceCatalog;
 
 #[derive(IntoElement, Clone)]
 pub(super) struct ToolCard {

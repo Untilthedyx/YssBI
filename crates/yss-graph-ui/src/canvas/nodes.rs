@@ -12,6 +12,7 @@ use super::{
     geometry::{self, NodeLayout},
     presentation::{NodeAppearance, State},
 };
+use crate::feedback;
 use yss_ui::text;
 
 impl GraphCanvas {
@@ -177,7 +178,7 @@ impl GraphCanvas {
                         .rounded_full()
                         .bg(color)
                         .tooltip(move |window, cx| {
-                            Tooltip::new(text::graph_diagnostic(&diagnostic)).build(window, cx)
+                            Tooltip::new(feedback::graph_diagnostic(&diagnostic)).build(window, cx)
                         })
                 }))
             })
@@ -292,10 +293,10 @@ impl GraphCanvas {
             .tooltip(move |window, cx| {
                 let mut lines = vec![display.state.label().into_owned()];
                 if let Some(code) = display.failure {
-                    lines.push(text::run_failure(code));
+                    lines.push(feedback::run_failure(code));
                 }
                 if let Some(diagnostic) = &diagnostic {
-                    lines.push(text::graph_diagnostic(diagnostic));
+                    lines.push(feedback::graph_diagnostic(diagnostic));
                 }
                 if display.cache.total > 0 {
                     if display.cache.state() != display.state {

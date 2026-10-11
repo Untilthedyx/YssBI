@@ -96,7 +96,7 @@ pub enum ResourceProjectionStatus {
 }
 
 impl ResourceProjectionStatus {
-    pub(crate) fn affected_graph_paths(&self) -> &[GraphResourcePath] {
+    pub fn affected_graph_paths(&self) -> &[GraphResourcePath] {
         match self {
             Self::Complete {
                 expected_graph_paths,

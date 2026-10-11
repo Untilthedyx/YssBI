@@ -95,7 +95,7 @@ impl Details {
         };
         let mut lines = vec![format!("{label} ({data_type})")];
         if let Some(diagnostic) = self.diagnostic(address) {
-            lines.push(text::graph_diagnostic(diagnostic));
+            lines.push(crate::feedback::graph_diagnostic(diagnostic));
         }
         for &(node, port) in &details.sources {
             let node = &self.projection.nodes[node];

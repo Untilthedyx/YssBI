@@ -15,6 +15,10 @@ use workspace::TransactionWorkspace;
 
 const TRANSACTION_DIRECTORY: &str = ".yssbi-transaction";
 
+pub(crate) fn is_internal_path(path: &Path) -> bool {
+    path.starts_with(TRANSACTION_DIRECTORY) || mutation::is_replacement_path(path)
+}
+
 #[derive(Clone, Debug)]
 pub struct TransactionContext {
     pub root: NormalizedRoot,

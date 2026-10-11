@@ -11,8 +11,8 @@ use gpui_kit::component::{
 };
 use gpui_kit::{AnyElement, Context, SharedString, div, prelude::*, px};
 use std::sync::Arc;
+use yss_desktop_services::resources::ResourceCatalog;
 use yss_project_identity::ProjectResourceRef;
-use yss_ui::resources::ResourceCatalog;
 
 impl ConversationPanel {
     pub(crate) fn set_resource_catalog(
@@ -20,17 +20,9 @@ impl ConversationPanel {
         catalog: Option<Arc<ResourceCatalog>>,
         cx: &mut Context<Self>,
     ) {
-        let catalog = catalog
+        self.resource_catalog = catalog
             .filter(|catalog| catalog.project() == self.session.project.project_instance_id());
-        let same = match (&self.resource_catalog, &catalog) {
-            (Some(old), Some(new)) => Arc::ptr_eq(old, new),
-            (None, None) => true,
-            _ => false,
-        };
-        if !same {
-            self.resource_catalog = catalog;
-            cx.notify();
-        }
+        cx.notify();
     }
 
     fn reference_available(&self, resource: &ProjectResourceRef) -> bool {

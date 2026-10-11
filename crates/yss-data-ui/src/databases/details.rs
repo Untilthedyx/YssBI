@@ -1,6 +1,42 @@
 mod columns;
 use super::DatabaseEditor;
+use std::borrow::Cow;
 use std::collections::HashSet;
+use yss_project_identity::ResourceRevision;
+
+/// The inspector's display dependencies, borrowed for allocation-free comparison.
+#[derive(PartialEq)]
+pub struct DetailsDisplay<'a> {
+    name: Cow<'a, str>,
+    revision: ResourceRevision,
+    metadata: Option<(u64, usize, usize)>,
+    busy: bool,
+    dirty: bool,
+    error: Option<Cow<'a, str>>,
+    disclosure: Cow<'a, DetailsState>,
+    preview_open: bool,
+    summary: Option<(usize, usize, usize)>,
+    primary: Option<(usize, usize)>,
+    offset: usize,
+}
+
+impl DetailsDisplay<'_> {
+    pub fn into_owned(self) -> DetailsDisplay<'static> {
+        DetailsDisplay {
+            name: Cow::Owned(self.name.into_owned()),
+            revision: self.revision,
+            metadata: self.metadata,
+            busy: self.busy,
+            dirty: self.dirty,
+            error: self.error.map(|error| Cow::Owned(error.into_owned())),
+            disclosure: Cow::Owned(self.disclosure.into_owned()),
+            preview_open: self.preview_open,
+            summary: self.summary,
+            primary: self.primary,
+            offset: self.offset,
+        }
+    }
+}
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{
@@ -11,6 +47,7 @@ use gpui_kit::component::{
 };
 use gpui_kit::{Context, IntoElement, Window, div, prelude::*, px};
 
+#[derive(Clone, PartialEq)]
 pub(super) struct DetailsState {
     info_open: bool,
     columns_open: bool,
@@ -29,6 +66,37 @@ impl Default for DetailsState {
 }
 
 impl DatabaseEditor {
+    /// Schema revisions and selection describe the inspector without copying table data.
+    pub fn details_state(&self, cx: &gpui_kit::App) -> DetailsDisplay<'_> {
+        let table = self.grid.read(cx);
+        let page = table.delegate();
+        let summary = page
+            .selection
+            .summary(page.rows.row_count(), page.rows.columns().len())
+            .filter(|summary| summary.cells > 1)
+            .map(|summary| (summary.rows, summary.columns, summary.cells));
+        let primary = page
+            .selection
+            .primary_cell(page.data_selection(table.selection()))
+            .filter(|(row, column)| page.value(*row, *column).is_some());
+        DetailsDisplay {
+            name: Cow::Borrowed(&self.name),
+            revision: self.revision,
+            metadata: self
+                .meta
+                .as_ref()
+                .map(|meta| (meta.data_revision, meta.row_count, meta.column_count)),
+            busy: self.busy(),
+            dirty: self.dirty(),
+            error: self.error.as_deref().map(Cow::Borrowed),
+            disclosure: Cow::Borrowed(&self.details),
+            preview_open: self.selection_preview_open,
+            summary,
+            primary,
+            offset: page.offset,
+        }
+    }
+
     pub fn render_details(
         &mut self,
         window: &mut Window,

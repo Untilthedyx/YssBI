@@ -10,8 +10,9 @@ use gpui_kit::{
     Context, ElementId, Overflow, SharedString, StyleRefinement, WeakEntity, Window, div,
     prelude::*, px,
 };
+use yss_desktop_services::resources::ResourceCatalog;
 use yss_project_identity::{ProjectResourceKind as Kind, ProjectResourceRef};
-use yss_ui::{markdown::Markdown, resources::ResourceCatalog};
+use yss_ui::markdown::Markdown;
 
 pub(super) fn view(
     id: impl Into<ElementId>,

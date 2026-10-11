@@ -24,3 +24,9 @@ yss-node-kernel = { path = "../yss-node-kernel" }
 yss-project = { path = "../yss-project" }
 yss-project-identity = { path = "../yss-project-identity" }
 yss-ui = { path = "../yss-ui" }
+
+[dev-dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }
+tokio.workspace = true
+yss-project = { path = "../yss-project", features = ["test-support"] }
+yss-project-model = { path = "../yss-project-model" }

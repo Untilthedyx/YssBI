@@ -1,6 +1,5 @@
 //! Render only requested visible rows; documents and actions remain with ActivityPanel.
 use super::*;
-use crate::text::activity_text;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{ActiveTheme, Icon, Sizable, input::Input, tooltip::Tooltip};
 use gpui_kit::{AnyElement, uniform_list};
@@ -128,8 +127,10 @@ impl ActivityPanel {
                 | ActivityItem::Chart { .. },
             ) => return Some(self.render_resource(index, item, cx)),
             ActivityRowContent::Message { label, description } => {
-                let label = activity_text(label);
-                let description = description.as_ref().map(activity_text);
+                let label = label.resolve_with(translate);
+                let description = description
+                    .as_ref()
+                    .map(|text| text.resolve_with(translate));
                 let hint = description.as_ref().map_or_else(
                     || label.clone(),
                     |description| format!("{label}\n{description}"),
@@ -152,7 +153,9 @@ fn row_label(content: &ActivityRowContent) -> String {
     match content {
         ActivityRowContent::Category { label, .. }
         | ActivityRowContent::Message { label, .. }
-        | ActivityRowContent::Item(ActivityItem::Command { label, .. }) => activity_text(label),
+        | ActivityRowContent::Item(ActivityItem::Command { label, .. }) => {
+            label.resolve_with(translate)
+        }
         ActivityRowContent::Item(ActivityItem::Conversation { title, .. }) if title.is_empty() => {
             conversations::title("").into_owned()
         }

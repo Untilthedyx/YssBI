@@ -314,7 +314,6 @@ impl GraphCanvas {
             nodes: self.selected.iter().copied().collect(),
             projection: self.graph.projection.clone(),
         });
-        cx.emit(CanvasEvent::Edited);
         cx.emit(gpui_kit::component::dock::PanelEvent::LayoutChanged);
         true
     }

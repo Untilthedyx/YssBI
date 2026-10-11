@@ -5,6 +5,7 @@ mod query;
 mod render;
 
 pub use commands::{ChartSaveOutcome, ChartSaveRequest};
+pub use details::DetailsDisplay;
 pub use query::{ChartRead, read};
 
 use gpui_kit::component::dock::{BasePanel, Panel, PanelEvent, PanelInfo, PanelState};
@@ -19,7 +20,6 @@ use yss_project_identity::{ProjectInstanceId, ResourceRevision};
 actions!(native_charts, [SaveChart]);
 pub enum ChartEvent {
     Activated,
-    Changed,
 }
 pub struct ChartEditor {
     services: Arc<ApplicationTasks>,
@@ -99,22 +99,16 @@ impl ChartEditor {
         cx.emit(ChartEvent::Activated);
     }
     fn changed(&self, cx: &mut Context<Self>) {
-        cx.emit(ChartEvent::Changed);
         cx.notify();
     }
     fn update_draft(
         &mut self,
         epoch: u64,
-        publication: u64,
         update: impl FnOnce(&mut ChartDocument),
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.busy()
-            || !self.available
-            || self.draft_epoch != epoch
-            || self.catalog.publication_revision != publication
-        {
+        if self.busy() || !self.available || self.draft_epoch != epoch {
             return;
         }
         let mut draft = self.draft.clone();
@@ -122,11 +116,14 @@ impl ChartEditor {
         if draft == self.draft {
             return;
         }
+        let was_dirty = self.dirty();
         self.draft = draft;
         self.draft_epoch = self.draft_epoch.wrapping_add(1);
         self.error = None;
         self.schedule_preview(window, cx);
-        cx.emit(PanelEvent::LayoutChanged);
+        if was_dirty != self.dirty() {
+            cx.emit(PanelEvent::LayoutChanged);
+        }
         self.changed(cx);
     }
 }

@@ -6,6 +6,7 @@ use gpui_kit::component::{
 use gpui_kit::{AnyElement, Context, FontWeight, IntoElement, WeakEntity, div, prelude::*};
 use yss_application::graph::run::{RunApplicationEvent, RunIdentity};
 use yss_graph_execution::error::{RunFailure, RunPhase};
+use yss_graph_ui::feedback;
 
 use super::{OutputEvent, OutputPanel};
 use crate::text;
@@ -15,7 +16,7 @@ pub(super) fn render(
     failure: &RunFailure,
     cx: &Context<OutputPanel>,
 ) -> AnyElement {
-    let code = text::run_failure_key(failure.code);
+    let code = feedback::run_failure_key(failure.code);
     div()
         .flex()
         .flex_col()
@@ -30,7 +31,7 @@ pub(super) fn render(
                 .text_color(cx.theme().danger)
                 .child(text::t("runFailure.title")),
         )
-        .child(text::run_failure(failure.code))
+        .child(feedback::run_failure(failure.code))
         .children(failure.groups.iter().map(|group| {
             div()
                 .text_color(cx.theme().muted_foreground)

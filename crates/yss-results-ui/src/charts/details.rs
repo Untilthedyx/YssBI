@@ -9,9 +9,43 @@ use gpui_kit::component::{
     button::{Button, ButtonVariants},
     menu::{DropdownMenu, PopupMenuItem},
 };
+use std::borrow::Cow;
 use yss_chart_document::{ChartEncodings, ChartType};
 use yss_data_contract::{SemanticType, ValueType};
 use yss_database_schema::DatabaseColumnFact;
+use yss_project_identity::ResourceRevision;
+
+/// Borrowed configuration identity; chart content remains in its retained owner.
+#[derive(PartialEq)]
+pub struct DetailsDisplay<'a> {
+    path: Cow<'a, str>,
+    epoch: u64,
+    source: Option<(Cow<'a, str>, ResourceRevision)>,
+    metadata_revision: Option<u64>,
+    columns_page: usize,
+    busy: bool,
+    available: bool,
+    dirty: bool,
+    external_change: bool,
+}
+
+impl DetailsDisplay<'_> {
+    pub fn into_owned(self) -> DetailsDisplay<'static> {
+        DetailsDisplay {
+            path: Cow::Owned(self.path.into_owned()),
+            epoch: self.epoch,
+            source: self
+                .source
+                .map(|(id, revision)| (Cow::Owned(id.into_owned()), revision)),
+            metadata_revision: self.metadata_revision,
+            columns_page: self.columns_page,
+            busy: self.busy,
+            available: self.available,
+            dirty: self.dirty,
+            external_change: self.external_change,
+        }
+    }
+}
 
 pub(super) fn chart_type_label(kind: ChartType) -> std::borrow::Cow<'static, str> {
     match kind {
@@ -27,9 +61,26 @@ fn numeric(column: &DatabaseColumnFact) -> bool {
     )
 }
 impl ChartEditor {
+    /// Configuration epochs identify retained draft/schema data without cloning it.
+    pub fn details_state(&self) -> DetailsDisplay<'_> {
+        DetailsDisplay {
+            path: Cow::Borrowed(self.path.as_str()),
+            epoch: self.draft_epoch,
+            source: self
+                .meta_source
+                .as_ref()
+                .map(|(id, revision)| (Cow::Borrowed(id.as_str()), *revision)),
+            metadata_revision: self.meta.as_ref().map(|meta| meta.data_revision),
+            columns_page: self.columns_page,
+            busy: self.busy(),
+            available: self.available,
+            dirty: self.dirty(),
+            external_change: self.external_change,
+        }
+    }
+
     pub fn render_details(&self, cx: &mut Context<Self>) -> AnyElement {
         let epoch = self.draft_epoch;
-        let publication = self.catalog.publication_revision;
         let owner = cx.entity().downgrade();
         let datasets = self.catalog.clone();
         let current_name = if self.draft.database_id.is_empty() {
@@ -95,7 +146,6 @@ impl ChartEditor {
                                     let _ = owner.update(cx, |view, cx| {
                                         view.update_draft(
                                             epoch,
-                                            publication,
                                             |document| {
                                                 if document.database_id != id {
                                                     document.database_id = id.clone();
@@ -132,7 +182,6 @@ impl ChartEditor {
                                     let _ = owner.update(cx, |view, cx| {
                                         view.update_draft(
                                             epoch,
-                                            publication,
                                             |document| {
                                                 if document.chart_type != kind {
                                                     document.chart_type = kind;
@@ -174,7 +223,6 @@ impl ChartEditor {
     }
     fn axis_field(&self, x_axis: bool, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let epoch = self.draft_epoch;
-        let publication = self.catalog.publication_revision;
         let owner = cx.entity().downgrade();
         let histogram = self.draft.chart_type == ChartType::Histogram;
         let metadata = self.meta.clone();
@@ -237,7 +285,6 @@ impl ChartEditor {
                                         let _ = owner.update(cx, |view, cx| {
                                             view.update_draft(
                                                 epoch,
-                                                publication,
                                                 |document| {
                                                     if x_axis {
                                                         document.encodings.x = column.clone();

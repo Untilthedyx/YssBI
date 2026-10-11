@@ -5,6 +5,8 @@ use yss_graph_document::GraphResourcePath;
 use yss_project::GraphEditVersion;
 use yss_project_identity::ResourceRevision;
 
+#[cfg(test)]
+mod tests;
 pub(super) struct ResourceMove {
     path: GraphResourcePath,
     revision: ResourceRevision,
@@ -208,7 +210,29 @@ impl GraphCanvas {
 
     fn install_projection(&mut self, graph: crate::OpenedGraph, cx: &mut Context<Self>) {
         self.refresh_task = None;
+        let recovered = self.refresh_failed;
         self.refresh_failed = false;
+        if self.resource_move.is_none() && self.graph.same_projection(&graph) {
+            let editing_changed = self.graph.editing != graph.editing;
+            let results_changed = self.graph.results != graph.results
+                && !(self.graph.results.execution_session_id == graph.results.execution_session_id
+                    && self.graph.results.semantic_input_hash == graph.results.semantic_input_hash
+                    && self.graph.results.revision > graph.results.revision);
+            self.graph.editing = graph.editing;
+            self.graph.install_results(graph.results);
+            if recovered {
+                self.emit_selection(cx);
+            }
+            if editing_changed {
+                cx.emit(gpui_kit::component::dock::PanelEvent::LayoutChanged);
+            }
+            if results_changed {
+                self.refresh_presentation();
+                self.resync_execution(cx);
+                cx.emit(CanvasEvent::Execution);
+            }
+            return;
+        }
         let draft_base = self.resource_move.take().and_then(|moved| {
             (graph.editing.version.revision == moved.revision)
                 .then_some(moved.draft_base)

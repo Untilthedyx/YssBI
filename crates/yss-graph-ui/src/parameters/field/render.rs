@@ -203,7 +203,7 @@ impl ParameterForm {
                 div()
                     .text_xs()
                     .text_color(color)
-                    .child(yss_ui::text::graph_diagnostic(diagnostic))
+                    .child(crate::feedback::graph_diagnostic(diagnostic))
             }))
             .children(field.error.as_ref().map(|error| {
                 div()

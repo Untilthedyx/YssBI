@@ -1,4 +1,4 @@
-use super::{Gesture, MindCanvas, MindEvent};
+use super::{Gesture, MindCanvas};
 use gpui_kit::{
     Bounds, Context, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
     ScrollWheelEvent, Window, point, px, size,
@@ -104,7 +104,6 @@ impl MindCanvas {
     }
     pub(super) fn pointer_up(&mut self, _: &MouseUpEvent, _: &mut Window, cx: &mut Context<Self>) {
         self.gesture = None;
-        cx.emit(MindEvent::Changed);
         cx.notify();
     }
     pub(super) fn zoom_at_pointer(

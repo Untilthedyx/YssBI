@@ -1,16 +1,157 @@
 //! Compact graph controls live outside the pointer-interaction surface.
-use super::{GraphCanvas, commands::*};
+use super::{GraphCanvas, ResultEntry, commands::*, result_search::Picker};
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{
     ActiveTheme, Disableable, Sizable,
     button::{Button, ButtonVariants},
     menu::DropdownMenu,
 };
-use gpui_kit::{Context, IntoElement, Window, div, prelude::*, px};
+use gpui_kit::{
+    Context, Entity, IntoElement, Render, Subscription, WeakEntity, Window, div, prelude::*, px,
+};
+use std::rc::Rc;
+use yss_application::graph::run::RunIdentity;
+use yss_graph_document::GraphResourcePath;
+use yss_graph_execution::identity::ExecutionSessionId;
+use yss_project_identity::ProjectInstanceId;
+
+pub(super) struct Toolbar {
+    owner: WeakEntity<GraphCanvas>,
+    picker: Entity<Picker>,
+    display: Option<Display>,
+    _subscriptions: Vec<Subscription>,
+}
+
+// Only rendered values and retained callback/search context belong here. In particular,
+// projection/edit revisions, preview geometry and pointer state are not dependencies.
+struct Display {
+    project: ProjectInstanceId,
+    path: GraphResourcePath,
+    edit_session: uuid::Uuid,
+    execution_session: ExecutionSessionId,
+    save: bool,
+    undo: bool,
+    redo: bool,
+    editable: bool,
+    run_node: bool,
+    running: bool,
+    run_unavailable: Option<&'static str>,
+    sync_status: Option<&'static str>,
+    clear_run: Option<RunIdentity>,
+    inspect: bool,
+    results: Rc<[ResultEntry]>,
+    locale: &'static str,
+}
+
+impl Display {
+    fn new(canvas: &GraphCanvas) -> Self {
+        Self {
+            project: canvas.graph.project.clone(),
+            path: canvas.graph.projection.graph_path.clone(),
+            edit_session: canvas.graph.editing.version.session_id,
+            execution_session: canvas.graph.results.execution_session_id,
+            save: canvas.can_edit() && canvas.dirty(),
+            undo: canvas.can_edit() && canvas.graph.editing.can_undo,
+            redo: canvas.can_edit() && canvas.graph.editing.can_redo,
+            editable: canvas.can_edit(),
+            run_node: canvas.can_run() && canvas.selected.len() == 1,
+            running: canvas.is_running(),
+            run_unavailable: canvas.graph_run_unavailable_reason(),
+            sync_status: canvas.execution_sync_status(),
+            clear_run: canvas.clearable_run().cloned(),
+            inspect: !canvas.graph.results.outputs.is_empty(),
+            results: canvas.result_entries().clone(),
+            locale: yss_ui::text::locale(),
+        }
+    }
+
+    fn same_context(&self, canvas: &GraphCanvas) -> bool {
+        self.project == canvas.graph.project
+            && self.path == canvas.graph.projection.graph_path
+            && self.edit_session == canvas.graph.editing.version.session_id
+            && self.execution_session == canvas.graph.results.execution_session_id
+    }
+
+    fn matches(&self, canvas: &GraphCanvas) -> bool {
+        self.same_context(canvas)
+            && self.save == (canvas.can_edit() && canvas.dirty())
+            && self.undo == (canvas.can_edit() && canvas.graph.editing.can_undo)
+            && self.redo == (canvas.can_edit() && canvas.graph.editing.can_redo)
+            && self.editable == canvas.can_edit()
+            && self.run_node == (canvas.can_run() && canvas.selected.len() == 1)
+            && self.running == canvas.is_running()
+            && self.run_unavailable == canvas.graph_run_unavailable_reason()
+            && self.sync_status == canvas.execution_sync_status()
+            && self.clear_run.as_ref() == canvas.clearable_run()
+            && self.inspect == !canvas.graph.results.outputs.is_empty()
+            && Rc::ptr_eq(&self.results, canvas.result_entries())
+            && self.locale == yss_ui::text::locale()
+    }
+}
+
+impl Toolbar {
+    pub(super) fn new(
+        owner: &Entity<GraphCanvas>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let picker = cx.new(|cx| Picker::new(owner, window, cx));
+        let subscriptions = vec![
+            cx.observe_in(owner, window, |toolbar, owner, window, cx| {
+                let canvas = owner.read(cx);
+                if toolbar
+                    .display
+                    .as_ref()
+                    .is_some_and(|display| display.matches(canvas))
+                {
+                    return;
+                }
+                let context_changed = toolbar
+                    .display
+                    .as_ref()
+                    .is_some_and(|display| !display.same_context(canvas));
+                toolbar.display = Some(Display::new(canvas));
+                if context_changed {
+                    toolbar
+                        .picker
+                        .update(cx, |picker, cx| picker.reset(window, cx));
+                }
+                cx.notify();
+            }),
+            cx.observe(&picker, |_, _, cx| cx.notify()),
+            cx.observe_global::<gpui_kit::component::Theme>(|_, cx| cx.notify()),
+        ];
+        Self {
+            owner: owner.downgrade(),
+            picker,
+            display: None,
+            _subscriptions: subscriptions,
+        }
+    }
+
+    pub(super) fn initialize(&mut self, canvas: &GraphCanvas) {
+        self.display = Some(Display::new(canvas));
+    }
+}
+
+impl Render for Toolbar {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // Render and listeners still belong to GraphCanvas; this view only owns
+        // the invalidation boundary and the search picker's retained lifetime.
+        self.owner
+            .update(cx, |canvas, cx| {
+                canvas
+                    .render_toolbar(&self.picker, window, cx)
+                    .into_any_element()
+            })
+            .unwrap_or_else(|_| div().into_any_element())
+    }
+}
 
 impl GraphCanvas {
     pub(super) fn render_toolbar(
         &self,
+        picker: &Entity<Picker>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement + use<> {
@@ -22,6 +163,7 @@ impl GraphCanvas {
             == yss_graph_document::GraphResourceKind::EventGraph;
         let focus = self.focus.clone();
         div()
+            .w_full()
             .h_8()
             .flex_shrink_0()
             .px_2()
@@ -65,7 +207,9 @@ impl GraphCanvas {
                         cx.listener(|view, _, _, cx| view.submit(GraphCommand::Redo, None, cx)),
                     ),
             )
-            .when(event_graph, |bar| bar.child(self.result_search(window, cx)))
+            .when(event_graph, |bar| {
+                bar.child(self.result_search(picker, window, cx))
+            })
             .child(div().flex_1().min_w_0())
             .when_some(self.execution_sync_status(), |view, status| {
                 view.child(
@@ -165,5 +309,127 @@ impl GraphCanvas {
                         }
                     })),
             )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gpui_kit::{AppContext, TestAppContext, WindowOptions, point};
+    use std::sync::Arc;
+    use yss_application::{graph::open::OpenGraphRequest, session::ApplicationState};
+    use yss_graph_document::{DocumentNode, GraphResourceKind, NodeId, NodePosition};
+
+    #[gpui_kit::test]
+    fn display_tracks_commands_and_sessions_without_tracking_movement(cx: &mut TestAppContext) {
+        let directory = tempfile::tempdir().unwrap();
+        let path = GraphResourcePath::new("events/Toolbar.yssbi-event").unwrap();
+        let mut data = yss_project_model::ProjectData::new();
+        let mut resource =
+            yss_project_model::GraphResourceDocument::new("Toolbar", GraphResourceKind::EventGraph);
+        let node = NodeId::new();
+        Arc::make_mut(&mut resource.document).nodes.insert(
+            node,
+            DocumentNode {
+                id: node,
+                node_type: "yssbi.dataframe.source.get".parse().unwrap(),
+                position: NodePosition { x: 0., y: 0. },
+                parameters: [(
+                    "dataframe".parse().unwrap(),
+                    serde_json::json!("missing-data"),
+                )]
+                .into(),
+                user_label: None,
+            },
+        );
+        data.graphs.insert(path.clone(), resource);
+        yss_project::fixtures::write_project(&data, directory.path().to_str().unwrap()).unwrap();
+        let application = ApplicationState::initialize().unwrap();
+        application
+            .load_project_for_application(directory.path().join("metadata.yssbi").to_str().unwrap())
+            .unwrap();
+        let project = application
+            .capture_session()
+            .unwrap()
+            .project_instance_id()
+            .clone();
+        let locale = yss_ui::text::locale();
+        let graph = crate::OpenedGraph::from_open(
+            application
+                .open_graph(OpenGraphRequest::new(project.clone(), path, 0, locale))
+                .unwrap(),
+            locale,
+        );
+        let catalog = Arc::new(
+            application
+                .query_project_index(project, locale, true)
+                .unwrap()
+                .activity_panels
+                .into_iter()
+                .find(|panel| panel.panel_id == "nodes")
+                .unwrap(),
+        );
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        let tasks = Arc::new(yss_desktop_services::ApplicationTasks::new(
+            application,
+            runtime.handle().clone(),
+            Default::default(),
+        ));
+        let services = Arc::new(crate::GraphServices::new(
+            tasks,
+            Arc::new(yss_ui::layout_store::LayoutStore::new(directory.path())),
+        ));
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            yss_ui::preferences::init(cx);
+        });
+        cx.update(|cx| {
+            gpui_kit::open_window(WindowOptions::default(), cx, |window, cx| {
+                cx.new(|cx| {
+                    let mut canvas =
+                        GraphCanvas::new(services, graph, catalog, locale.into(), window, cx);
+                    canvas.selected.insert(node);
+                    let idle = Display::new(&canvas);
+                    canvas.preview.insert(node, NodePosition { x: 30., y: 40. });
+                    canvas.offset = point(px(20.), px(10.));
+                    canvas.zoom *= 1.25;
+                    assert!(idle.matches(&canvas));
+
+                    // Persisted position-only replacement is not itself a display dependency.
+                    Arc::make_mut(&mut canvas.graph.projection).nodes[0].position =
+                        NodePosition { x: 30., y: 40. };
+                    canvas.graph.editing.version.revision =
+                        yss_project_identity::ResourceRevision::new(100);
+                    assert!(idle.matches(&canvas));
+
+                    canvas.graph.editing.dirty = true;
+                    assert!(!idle.matches(&canvas));
+                    let dirty = Display::new(&canvas);
+                    canvas.graph.editing.can_undo = true;
+                    assert!(!dirty.matches(&canvas));
+                    let undo = Display::new(&canvas);
+                    canvas.graph.editing.can_redo = true;
+                    assert!(!undo.matches(&canvas));
+                    let history = Display::new(&canvas);
+                    canvas.selected.clear();
+                    assert!(!history.matches(&canvas));
+                    let unselected = Display::new(&canvas);
+                    canvas.busy = true;
+                    assert!(!unselected.matches(&canvas));
+                    canvas.busy = false;
+                    assert!(unselected.matches(&canvas));
+
+                    canvas.graph.editing.version.session_id = uuid::Uuid::new_v4();
+                    assert!(!unselected.same_context(&canvas));
+                    let reopened = Display::new(&canvas);
+                    canvas.graph.results.execution_session_id =
+                        ExecutionSessionId::new(uuid::Uuid::new_v4());
+                    assert!(!reopened.matches(&canvas));
+                    assert!(!reopened.same_context(&canvas));
+                    canvas
+                })
+            })
+            .unwrap();
+        });
     }
 }

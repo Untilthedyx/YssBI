@@ -1,4 +1,4 @@
-//! Shared catalog row presentation; each host owns its interactions.
+//! Shared graph catalog row presentation; each host owns its interactions.
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{ActiveTheme, Icon, tooltip::Tooltip};
 use gpui_kit::{App, Div, Stateful, div, prelude::*};
@@ -38,7 +38,7 @@ pub fn node(title: &str, creation: &NodeCreation, available: bool, cx: &App) -> 
                 div()
                     .text_xs()
                     .flex_shrink_0()
-                    .child(crate::text::translate("canvas.nodePalette.unavailable")),
+                    .child(yss_ui::text::translate("canvas.nodePalette.unavailable")),
             )
         })
 }

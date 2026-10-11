@@ -477,8 +477,13 @@ the full augmented design before inserting fitted-value or predictor powers.
 White and IM require an intercept in the fitted model. Dispatch checks the model's
 existing `constant` flag rather than treating its first predictor as an intercept
 or adding a new one. Their auxiliary rank and projection calculations reuse one
-SVD of each design. Weighted IM weights only the heteroskedasticity component;
-its skewness and kurtosis components retain the existing unweighted convention.
+thin SVD of each design, including weighted White and the IM skewness regression.
+Only `min(observations, columns)` singular vectors are retained; tall auxiliary
+designs do not allocate an observation-by-observation matrix. Rank thresholds and
+truncated pseudoinverse calculations remain unchanged. Weighted IM weights only
+the heteroskedasticity component; its skewness and kurtosis components retain the
+existing unweighted convention. `tests/regression_golden.rs` checks tall binary
+designs with rank-deficient White expansions against exact OLS/WLS diagnostic moments.
 The fitted-value BP/Koenker variants regress functions of residual squares on an
 intercept and fitted values; residuals and fitted values have distinct argument
 roles in both the OLS and WLS dispatch paths.

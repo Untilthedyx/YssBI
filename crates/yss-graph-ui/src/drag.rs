@@ -111,7 +111,7 @@ impl Render for GraphDrag {
                 creation,
                 available,
                 ..
-            })) => body.child(yss_ui::catalog_rows::node(title, creation, *available, cx)),
+            })) => body.child(crate::catalog_rows::node(title, creation, *available, cx)),
             Some(ActivityRowContent::Item(item)) => body.child((self.render_resource)(item, cx)),
             _ => body,
         }

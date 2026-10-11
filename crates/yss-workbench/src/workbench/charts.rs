@@ -104,6 +104,15 @@ impl Workbench {
             .map(|project| project.index.clone())
             .unwrap_or_else(|| read.catalog().clone());
         let chart = cx.new(|cx| ChartEditor::new(services, read, cx));
+        let mut status = (chart.read(cx).dirty(), chart.read(cx).busy());
+        self.subscriptions
+            .push(cx.observe(&chart, move |_, chart, cx| {
+                let next = (chart.read(cx).dirty(), chart.read(cx).busy());
+                if status != next {
+                    status = next;
+                    cx.notify();
+                }
+            }));
         self.subscriptions
             .push(cx.subscribe(&chart, |view, chart, event, cx| {
                 if matches!(event, ChartEvent::Activated) {
@@ -111,8 +120,6 @@ impl Workbench {
                         .update(cx, |details, cx| details.set_chart(chart.downgrade(), cx));
                     view.activate_file(chart.read(cx).path().as_str().to_owned(), cx);
                 }
-                view.details.update(cx, |_, cx| cx.notify());
-                cx.notify();
             }));
         self.charts.insert(path, chart.downgrade());
         self.present_panel(

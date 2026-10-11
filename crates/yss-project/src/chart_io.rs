@@ -78,7 +78,7 @@ fn scan_chart_documents(
     scan_chart_paths(root)?
         .into_iter()
         .map(|path| {
-            let document = read_chart_document_path(&root.join(path.as_str()))?;
+            let document = read_chart_document(root, &path)?;
             Ok((path, document))
         })
         .collect()
@@ -180,9 +180,12 @@ fn invalid_layout(path: &Path, reason: &str) -> ProjectError {
     ProjectError::InvalidProjectFormat(format!("{reason}: '{}'", path.display()))
 }
 
-fn read_chart_document_path(path: &Path) -> Result<ChartDocument, ProjectError> {
-    let content = std::fs::read_to_string(path).map_err(ProjectError::Io)?;
-    serde_json::from_str(&content).map_err(ProjectError::Deserialize)
+pub(crate) fn read_chart_document(
+    root: &Path,
+    path: &ChartResourcePath,
+) -> Result<ChartDocument, ProjectError> {
+    let content = yss_filesystem::read_secure_file(root, path.relative_path())?;
+    serde_json::from_slice(&content).map_err(ProjectError::Deserialize)
 }
 
 #[cfg(test)]

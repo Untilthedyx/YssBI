@@ -123,7 +123,7 @@ impl Workbench {
         cx: &mut Context<Self>,
     ) -> Self {
         let (dock, dock_renderer) = dock::create(cx.weak_entity(), window, cx);
-        let details = cx.new(|cx| DetailsPanel::new(services.graph.clone(), window, cx));
+        let details = cx.new(|cx| DetailsPanel::new(services.graph.clone(), cx));
         let problems = cx.new(ProblemsPanel::new);
         let logs = cx.new(|cx| LogsPanel::new(services.clone(), window, cx));
         let output = cx.new(OutputPanel::new);

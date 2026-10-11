@@ -39,7 +39,7 @@ impl ActivityPanel {
             .text_color(cx.theme().muted_foreground)
             .hover(|style| style.bg(cx.theme().muted))
             .child(crate::catalog_rows::category(
-                activity_text(label),
+                label.resolve_with(translate),
                 expanded,
                 cx,
             ))
@@ -57,7 +57,7 @@ impl ActivityPanel {
                 .ghost()
                 .size_5()
                 .icon(feedback::tool_icon(tool.icon))
-                .tooltip(activity_text(&tool.label))
+                .tooltip(tool.label.resolve_with(translate))
                 .on_mouse_down(gpui_kit::MouseButton::Left, |_, _, cx| {
                     cx.stop_propagation()
                 })
@@ -86,7 +86,7 @@ impl ActivityPanel {
                     let owner = owner.clone();
                     let tool_id = tool.id.to_owned();
                     menu = menu.item(
-                        PopupMenuItem::new(activity_text(&tool.label))
+                        PopupMenuItem::new(tool.label.resolve_with(translate))
                             .icon(feedback::tool_icon(tool.icon))
                             .on_click(move |_, _, cx| {
                                 let _ = owner.update(cx, |view, cx| {

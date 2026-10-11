@@ -9,6 +9,24 @@ use crate::FilesystemLeaseSet;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
+const REPLACEMENT_MARKER: &str = ".yssbi-replacement-";
+
+pub(super) fn is_replacement_path(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+        return false;
+    };
+    let Some((name, suffix)) = name
+        .strip_prefix('.')
+        .and_then(|name| name.rsplit_once(REPLACEMENT_MARKER))
+    else {
+        return false;
+    };
+    let Some((index, identity)) = suffix.split_once('-') else {
+        return false;
+    };
+    !name.is_empty() && index.parse::<usize>().is_ok() && uuid::Uuid::parse_str(identity).is_ok()
+}
+
 pub(super) struct ReplacementFile {
     path: PathBuf,
     file: Option<std::fs::File>,
@@ -23,7 +41,7 @@ impl ReplacementFile {
         validate_real_directory(parent)?;
         for _ in 0..32 {
             let path = parent.join(format!(
-                ".{}.yssbi-replacement-{index}-{}",
+                ".{}{REPLACEMENT_MARKER}{index}-{}",
                 live.file_name().unwrap_or_default().to_string_lossy(),
                 uuid::Uuid::new_v4()
             ));

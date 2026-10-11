@@ -4,6 +4,7 @@ use gpui_kit::{Context, Window};
 use tokio::sync::broadcast::error::RecvError;
 use yss_application::graph::editing::GraphActivity;
 use yss_desktop_services::DesktopEvent;
+use yss_graph_document::GraphResourcePath;
 
 impl Workbench {
     pub(super) fn connect_events(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -102,26 +103,59 @@ impl Workbench {
             DesktopEvent::Graph(identity, GraphActivity::Changed { graph_path, .. })
                 if identity == project.identity =>
             {
-                if let Some(graph) = self
-                    .graphs
-                    .get(&graph_path)
-                    .and_then(gpui_kit::WeakEntity::upgrade)
-                {
-                    graph.update(cx, |graph, cx| graph.refresh(cx));
+                let resource = GraphResourcePath::new(graph_path.clone()).ok()
+                    .map(yss_project_history::ResourceKey::Graph);
+                for graph in self.graphs.values().filter_map(gpui_kit::WeakEntity::upgrade) {
+                    let canvas = graph.read(cx);
+                    let affected = canvas.path() == graph_path
+                        || resource.as_ref().is_some_and(|resource| canvas.graph().depends_on_resource(resource));
+                    if affected {
+                        graph.update(cx, |graph, cx| graph.refresh(cx));
+                    }
                 }
             }
             DesktopEvent::Index(invalidation)
                 if invalidation.project_instance_id() == &project.identity =>
             {
                 self.refresh_project(window, cx);
-                self.refresh_graphs(cx);
-                self.refresh_documents(window, cx);
-                self.refresh_minds(window, cx);
+                if let Some(resources) = invalidation.resources() {
+                    for graph in self.graphs.values().filter_map(gpui_kit::WeakEntity::upgrade) {
+                        let canvas = graph.read(cx);
+                        if resources.iter().any(|resource| {
+                            matches!(resource, yss_project_history::ResourceKey::Graph(path) if path.as_str() == canvas.path())
+                                || canvas.graph().depends_on_resource(resource)
+                        }) {
+                            graph.update(cx, |graph, cx| graph.refresh(cx));
+                        }
+                    }
+                    for resource in resources {
+                        if let yss_project_history::ResourceKey::Doc(path) = resource
+                            && let Some(document) = self.documents.get(path.0.as_ref()).and_then(gpui_kit::WeakEntity::upgrade) {
+                            document.update(cx, |document, cx| document.refresh(window, cx));
+                        }
+                        if let yss_project_history::ResourceKey::Mind(path) = resource
+                            && let Some(mind) = self.minds.get(path.0.as_ref()).and_then(gpui_kit::WeakEntity::upgrade) {
+                            mind.update(cx, |mind, cx| mind.refresh(window, cx));
+                        }
+                    }
+                } else {
+                    self.refresh_graphs(cx);
+                    self.refresh_documents(window, cx);
+                    self.refresh_minds(window, cx);
+                }
             }
             DesktopEvent::Resource(mutation) if mutation.project_instance_id == project.identity => {
                 self.accept_graph_resources(&mutation, window, cx);
-                self.refresh_project(window, cx);
-                self.refresh_graphs(cx);
+                if !self.refreshing_index
+                    && self.project.as_mut().is_some_and(|project| project.accept_file_save(&mutation))
+                {
+                    let resources = self.project.as_ref().map(|project| project.resources.clone());
+                    self.assistant.update(cx, |assistant, cx| {
+                        assistant.set_resource_catalog(resources, cx);
+                    });
+                } else {
+                    self.refresh_project(window, cx);
+                }
                 for delta in &mutation.deltas {
                     if let yss_project_history::ResourceKey::Doc(path) = &delta.resource
                         && let Some(document) = self.documents.get(path.0.as_ref()).and_then(gpui_kit::WeakEntity::upgrade) {
@@ -208,6 +242,10 @@ impl Workbench {
             self.refresh_project(window, cx);
             return;
         }
+        let language_changed = self
+            .project
+            .as_ref()
+            .is_none_or(|previous| previous.language != project.language);
         for document in &project.panels {
             if let Some(panel) = self
                 .activities
@@ -217,6 +255,9 @@ impl Workbench {
                 let owner = cx.entity().downgrade();
                 panel.update(cx, |panel, cx| {
                     panel.replace_document(document.clone(), cx);
+                    if language_changed {
+                        cx.notify();
+                    }
                     if let Some(catalog) = project
                         .panels
                         .iter()

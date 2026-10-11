@@ -1,5 +1,5 @@
 //! Dialog-only semantic drafts use complete, revision-bound column values.
-use super::{DatabaseEditor, DatabaseEvent};
+use super::DatabaseEditor;
 mod fields;
 mod inputs;
 
@@ -258,7 +258,6 @@ impl SemanticDialog {
                 if view.refresh_again {
                     view.reload(false, window, cx);
                 }
-                cx.emit(DatabaseEvent::Changed);
                 cx.notify();
             });
             let _ = dialog.update_in(cx, |dialog, window, cx| {

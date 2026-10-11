@@ -4,6 +4,7 @@ mod commands;
 mod details;
 mod render;
 pub use commands::{DocumentSaveOutcome, DocumentSaveRequest};
+pub use details::DetailsDisplay;
 
 use gpui_kit::component::{
     dock::{BasePanel, Panel, PanelEvent, PanelInfo, PanelState},
@@ -22,7 +23,6 @@ actions!(native_documents, [SaveDocument, ToggleDocumentPreview]);
 
 pub enum DocumentEvent {
     Activated,
-    Changed,
 }
 
 pub struct DocumentEditor {
@@ -71,6 +71,7 @@ impl DocumentEditor {
         let subscription =
             cx.subscribe_in(&input, window, |view, _, event, window, cx| match event {
                 InputEvent::Change => {
+                    let was_dirty = view.dirty();
                     view.draft_dirty =
                         view.input.read(cx).text() != view.snapshot.content.0.as_str();
                     view.autosave.edited();
@@ -84,8 +85,9 @@ impl DocumentEditor {
                             let _ = view.update(cx, |view, cx| view.update_preview(cx));
                         }));
                     }
-                    cx.emit(PanelEvent::LayoutChanged);
-                    cx.emit(DocumentEvent::Changed);
+                    if was_dirty != view.dirty() {
+                        cx.emit(PanelEvent::LayoutChanged);
+                    }
                     cx.notify();
                 }
                 InputEvent::Focus => cx.emit(DocumentEvent::Activated),

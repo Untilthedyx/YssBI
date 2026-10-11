@@ -15,13 +15,30 @@ pub use yss_project_layout::is_project_index_input_path as is_project_index_watc
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectIndexInvalidation {
     project_instance_id: ProjectInstanceId,
+    resources: Option<Vec<yss_project_history::ResourceKey>>,
 }
 
 impl ProjectIndexInvalidation {
     pub fn new(project_instance_id: ProjectInstanceId) -> Self {
         Self {
             project_instance_id,
+            resources: None,
         }
+    }
+
+    pub(crate) fn for_resources(
+        project_instance_id: ProjectInstanceId,
+        resources: Vec<yss_project_history::ResourceKey>,
+    ) -> Self {
+        Self {
+            project_instance_id,
+            resources: Some(resources),
+        }
+    }
+
+    /// None requires authoritative resync; Some contains the reconciled resource identities.
+    pub fn resources(&self) -> Option<&[yss_project_history::ResourceKey]> {
+        self.resources.as_deref()
     }
 
     pub fn project_instance_id(&self) -> &ProjectInstanceId {
@@ -49,14 +66,5 @@ mod tests {
 
         assert!(filesystem_change_affects_project_index(&relevant));
         assert!(!filesystem_change_affects_project_index(&unrelated));
-    }
-
-    #[test]
-    fn invalidation_preserves_the_strong_runtime_project_identity() {
-        let project = ProjectInstanceId::from_existing("runtime-project".to_owned());
-        let invalidation = ProjectIndexInvalidation::new(project.clone());
-
-        assert_eq!(invalidation.project_instance_id(), &project);
-        assert_eq!(invalidation.into_project_instance_id(), project);
     }
 }

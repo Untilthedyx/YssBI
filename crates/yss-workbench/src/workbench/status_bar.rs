@@ -317,6 +317,7 @@ struct GraphStatus {
     offset_y: i32,
     zoom_percent: u16,
     busy: bool,
+    dirty: bool,
     run_status: std::borrow::Cow<'static, str>,
 }
 
@@ -330,6 +331,7 @@ impl GraphStatus {
             offset_y: f32::from(offset.y).round() as i32,
             zoom_percent: (canvas.zoom() * 100.).round() as u16,
             busy: canvas.busy(),
+            dirty: canvas.dirty(),
             run_status: canvas.run_status(),
         }
     }

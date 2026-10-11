@@ -316,12 +316,7 @@ impl Render for GraphCanvas {
             .when(self.palette.is_some(), |view| {
                 view.child(self.render_palette(window, cx))
             });
-        div()
-            .size_full()
-            .flex()
-            .flex_col()
-            .child(self.render_toolbar(window, cx))
-            .child(surface)
+        div().size_full().flex().flex_col().child(surface)
     }
 }
 

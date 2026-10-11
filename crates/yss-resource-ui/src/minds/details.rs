@@ -8,7 +8,35 @@ use gpui_kit::component::{
     input::Textarea,
 };
 use gpui_kit::{Context, IntoElement, Window, div, prelude::*};
+use std::borrow::Cow;
 use yss_project_model::file::FileVersion;
+
+/// Read-only inspector identity and controls, excluding editable topic text.
+#[derive(PartialEq)]
+pub struct DetailsDisplay<'a> {
+    path: Cow<'a, str>,
+    topic: Option<(Cow<'a, FileVersion>, Cow<'a, str>, bool, bool)>,
+    selected_count: usize,
+    error: Option<Cow<'a, str>>,
+}
+
+impl DetailsDisplay<'_> {
+    pub fn into_owned(self) -> DetailsDisplay<'static> {
+        DetailsDisplay {
+            path: Cow::Owned(self.path.into_owned()),
+            topic: self.topic.map(|(version, id, collapsed, busy)| {
+                (
+                    Cow::Owned(version.into_owned()),
+                    Cow::Owned(id.into_owned()),
+                    collapsed,
+                    busy,
+                )
+            }),
+            selected_count: self.selected_count,
+            error: self.error.map(|error| Cow::Owned(error.into_owned())),
+        }
+    }
+}
 
 #[derive(Clone)]
 struct TopicTarget {
@@ -28,6 +56,23 @@ enum TopicAction {
 }
 
 impl MindCanvas {
+    /// Retains only dependencies of the inspector, not the editable topic text.
+    pub fn details_state(&self) -> DetailsDisplay<'_> {
+        DetailsDisplay {
+            path: Cow::Borrowed(self.path()),
+            topic: self.selected_topic().map(|topic| {
+                (
+                    Cow::Borrowed(&self.snapshot.version),
+                    Cow::Borrowed(topic.id.as_str()),
+                    self.collapsed.contains(&topic.id),
+                    self.busy(),
+                )
+            }),
+            selected_count: self.selected.len(),
+            error: self.error.as_deref().map(Cow::Borrowed),
+        }
+    }
+
     pub fn render_details(
         &mut self,
         window: &mut Window,

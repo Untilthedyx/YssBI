@@ -9,7 +9,7 @@ use gpui_kit::component::{
 use gpui_kit::{
     AnyElement, IntoElement, MouseButton, Render, SharedString, div, prelude::*, rems, uniform_list,
 };
-use yss_ui::text::{activity_text, translate};
+use yss_ui::text::translate;
 
 impl Render for NodePalette {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -195,8 +195,8 @@ impl NodePalette {
             .text_sm();
         Some(match &row.content {
             ActivityRowContent::Category { label, .. } => body
-                .child(yss_ui::catalog_rows::category(
-                    activity_text(label),
+                .child(crate::catalog_rows::category(
+                    label.resolve_with(translate),
                     self.browser.searching() || !self.browser.collapsed.contains(&row.id),
                     cx,
                 ))
@@ -218,7 +218,7 @@ impl NodePalette {
                 creation,
                 ..
             }) => body
-                .child(yss_ui::catalog_rows::node(title, creation, *available, cx))
+                .child(crate::catalog_rows::node(title, creation, *available, cx))
                 .when(*available && self.browser.active == Some(index), |body| {
                     body.bg(cx.theme().accent)
                 })

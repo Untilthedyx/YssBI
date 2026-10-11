@@ -6,6 +6,7 @@ use yss_project_identity::{
     ProjectInstanceId, ProjectResourceKind as Kind, ProjectResourceRef, ResourceRevision,
 };
 
+#[derive(Clone)]
 pub struct ResourceEntry {
     resource: ProjectResourceRef,
     name: String,
@@ -32,6 +33,7 @@ impl ResourceEntry {
     }
 }
 
+#[derive(Clone)]
 pub struct ResourceCatalog {
     project: ProjectInstanceId,
     entries: Vec<ResourceEntry>,
@@ -135,6 +137,17 @@ impl ResourceCatalog {
 
     pub fn get(&self, resource: &ProjectResourceRef) -> Option<&ResourceEntry> {
         self.entries.get(*self.positions.get(resource)?)
+    }
+
+    /// Advances a retained catalog entry without rebuilding names, order or search rows.
+    pub fn set_resource_revision(&mut self, kind: Kind, id: &str, revision: ResourceRevision) {
+        if let Some(entry) = self
+            .entries
+            .iter_mut()
+            .find(|entry| entry.resource.kind == kind && entry.resource.id == id)
+        {
+            entry.revision = revision;
+        }
     }
 
     pub fn matches(&self, query: &str) -> Vec<usize> {

@@ -71,7 +71,7 @@ pub struct ConversationPanel {
     transcript: projection::Transcript,
     catalog: Option<Arc<LanguageModelCatalog>>,
     references: Vec<ProjectResourceRef>,
-    resource_catalog: Option<Arc<yss_ui::resources::ResourceCatalog>>,
+    resource_catalog: Option<Arc<yss_desktop_services::resources::ResourceCatalog>>,
     options: HarnessTurnOptions,
     preferred_effort: Option<yss_harness_contract::ReasoningEffort>,
     pending: Option<Submission>,

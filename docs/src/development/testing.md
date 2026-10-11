@@ -16,6 +16,16 @@ cargo fmt -p yss-desktop-gpui -p yss-workbench -p yss-graph-ui -- --check
 
 The binary is now a thin entry point. Its compilation checks dependency interfaces, but selecting only that package does not run the feature libraries' tests or format/lint their source. Include `yss-ui`, `yss-desktop-services` and other affected features when their contracts change.
 
+Check shared UI independently so feature dependencies cannot hide missing imports or feature requirements:
+
+```sh
+cargo check -p yss-ui --all-targets
+cargo tree -p yss-ui --edges normal,build
+cargo test -p yss-application --lib literals_bypass_translation_and_interpolation
+```
+
+The shared UI dependency closure must not pull in Application, Project, DataFusion, Arrow, Rig or the plugin runtime. For resource catalog and localized presentation changes, exercise the Assistant resource picker, node catalog and graph diagnostics in the native application.
+
 Existing desktop behavior tests and the merged private-module tests run under their current owners:
 
 ```sh

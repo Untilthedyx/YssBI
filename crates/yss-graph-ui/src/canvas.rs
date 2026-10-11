@@ -30,9 +30,12 @@ use std::{
 };
 
 use gestures::Gesture;
-use gpui_kit::component::dock::{BasePanel, Panel, PanelEvent};
 use gpui_kit::{
     App, Bounds, Context, EventEmitter, FocusHandle, Focusable, Pixels, Point, Window, point, px,
+};
+use gpui_kit::{
+    AppContext,
+    component::dock::{BasePanel, Panel, PanelEvent},
 };
 use yss_application::activity_panel::ActivityPanelDocument;
 use yss_graph_document::{ConnectionId, NodeId, NodePosition, PortAddress};
@@ -50,7 +53,6 @@ pub enum CanvasEvent {
         nodes: Vec<NodeId>,
         projection: Arc<EditorProjectionModel>,
     },
-    Edited,
     RevealNodeDetails,
     Projection {
         nodes: Vec<NodeId>,
@@ -79,6 +81,7 @@ pub struct GraphCanvas {
     catalog: Arc<ActivityPanelDocument>,
     catalog_language: String,
     focus: FocusHandle,
+    toolbar: gpui_kit::Entity<toolbar::Toolbar>,
     port_focus: FocusHandle,
     located_port: Option<PortAddress>,
     selected_connections: BTreeSet<ConnectionId>,
@@ -118,6 +121,11 @@ impl GraphCanvas {
         &self.graph
     }
 
+    /// Retained graph controls for host chrome, outside the cached canvas content.
+    pub fn toolbar_view(&self) -> gpui_kit::AnyView {
+        self.toolbar.clone().into()
+    }
+
     pub fn new(
         services: Arc<GraphServices>,
         graph: OpenedGraph,
@@ -131,12 +139,14 @@ impl GraphCanvas {
         )));
         let font_scale = yss_ui::preferences::current(cx).appearance.ui_font_size / 14.;
         let text_system = window.text_system().clone();
+        let owner = cx.entity();
         let mut view = Self {
             graph,
             services,
             catalog,
             catalog_language,
             focus: cx.focus_handle(),
+            toolbar: cx.new(|cx| toolbar::Toolbar::new(&owner, window, cx)),
             port_focus: cx.focus_handle(),
             located_port: None,
             selected_connections: BTreeSet::new(),
@@ -196,6 +206,8 @@ impl GraphCanvas {
             execution: Default::default(),
         };
         view.refresh_presentation();
+        view.toolbar
+            .update(cx, |toolbar, _| toolbar.initialize(&view));
         cx.defer_in(window, |view, _, cx| {
             view.resync_execution(cx);
             if view.graph.language != yss_ui::text::locale() {
@@ -239,6 +251,9 @@ impl GraphCanvas {
         language: &str,
         cx: &mut Context<Self>,
     ) {
+        if self.catalog_language == language && self.catalog.same_content(&catalog) {
+            return;
+        }
         self.catalog = catalog;
         self.catalog_language = language.to_owned();
         if let Some(palette) = &self.palette {
@@ -297,7 +312,7 @@ impl GraphCanvas {
                 .unwrap_or(self.path())
                 .trim_end_matches(".yssbi-event")
                 .trim_end_matches(".yssbi-function"),
-            if self.dirty() { " •" } else { "" }
+            if self.dirty() { " *" } else { "" }
         )
     }
 

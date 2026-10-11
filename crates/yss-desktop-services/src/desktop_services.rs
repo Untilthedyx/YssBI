@@ -1,3 +1,5 @@
+pub mod resources;
+
 use std::sync::Arc;
 
 use anyhow::Result;

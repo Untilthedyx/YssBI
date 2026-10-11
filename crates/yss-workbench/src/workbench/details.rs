@@ -1,4 +1,6 @@
 //! Dock and cross-editor selection routing; graph drafts stay in the retained graph owner.
+#[cfg(test)]
+pub(super) mod tests;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{
     ActiveTheme, Icon,
@@ -29,12 +31,17 @@ pub struct DetailsPanel {
     focus: FocusHandle,
     scroll: gpui_kit::ScrollHandle,
     _graph_observer: gpui_kit::Subscription,
+    target_subscription: Option<gpui_kit::Subscription>,
 }
 
 impl DetailsPanel {
-    pub fn new(services: Arc<GraphServices>, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let graph = cx.new(|cx| GraphDetails::new(services, window, cx));
-        let observer = cx.observe(&graph, |_, _, cx| cx.notify());
+    pub fn new(services: Arc<GraphServices>, cx: &mut Context<Self>) -> Self {
+        let graph = cx.new(|cx| GraphDetails::new(services, cx));
+        let observer = cx.observe(&graph, |view: &mut Self, _, cx| {
+            if view.graph_visible(cx) {
+                cx.notify();
+            }
+        });
         let focus = graph.read(cx).focus_handle(cx);
         Self {
             graph,
@@ -46,6 +53,7 @@ impl DetailsPanel {
             focus,
             scroll: gpui_kit::ScrollHandle::new(),
             _graph_observer: observer,
+            target_subscription: None,
         }
     }
 
@@ -66,6 +74,7 @@ impl DetailsPanel {
     }
 
     pub fn clear(&mut self, cx: &mut Context<Self>) {
+        self.target_subscription = None;
         self.graph.update(cx, |graph, cx| graph.clear(cx));
         self.document = None;
         self.mind = None;
@@ -76,24 +85,91 @@ impl DetailsPanel {
     }
 
     pub fn set_document(&mut self, document: WeakEntity<DocumentEditor>, cx: &mut Context<Self>) {
+        if self.document.as_ref() == Some(&document) && self.target_visible(cx) {
+            return;
+        }
         self.clear(cx);
+        if let Some(editor) = document.upgrade() {
+            let mut state = editor.read(cx).details_state().into_owned();
+            self.target_subscription = Some(cx.observe(&editor, move |view, editor, cx| {
+                let next = editor.read(cx).details_state();
+                if state != next {
+                    state = next.into_owned();
+                    if view.target_visible(cx) {
+                        cx.notify();
+                    }
+                }
+            }));
+        }
         self.document = Some(document);
-        cx.notify();
     }
     pub fn set_mind(&mut self, mind: WeakEntity<MindCanvas>, cx: &mut Context<Self>) {
+        if self.mind.as_ref() == Some(&mind) && self.target_visible(cx) {
+            return;
+        }
         self.clear(cx);
+        if let Some(editor) = mind.upgrade() {
+            let mut state = editor.read(cx).details_state().into_owned();
+            self.target_subscription = Some(cx.observe(&editor, move |view, editor, cx| {
+                let next = editor.read(cx).details_state();
+                if state != next {
+                    state = next.into_owned();
+                    if view.target_visible(cx) {
+                        cx.notify();
+                    }
+                }
+            }));
+        }
         self.mind = Some(mind);
-        cx.notify();
     }
     pub fn set_database(&mut self, database: WeakEntity<DatabaseEditor>, cx: &mut Context<Self>) {
+        if self.database.as_ref() == Some(&database) && self.target_visible(cx) {
+            return;
+        }
         self.clear(cx);
+        if let Some(editor) = database.upgrade() {
+            let mut state = editor.read(cx).details_state(cx).into_owned();
+            self.target_subscription = Some(cx.observe(&editor, move |view, editor, cx| {
+                let next = editor.read(cx).details_state(cx);
+                if state != next {
+                    state = next.into_owned();
+                    if view.target_visible(cx) {
+                        cx.notify();
+                    }
+                }
+            }));
+        }
         self.database = Some(database);
-        cx.notify();
     }
     pub fn set_chart(&mut self, chart: WeakEntity<ChartEditor>, cx: &mut Context<Self>) {
+        if self.chart.as_ref() == Some(&chart) && self.target_visible(cx) {
+            return;
+        }
         self.clear(cx);
+        if let Some(editor) = chart.upgrade() {
+            let mut state = editor.read(cx).details_state().into_owned();
+            self.target_subscription = Some(cx.observe(&editor, move |view, editor, cx| {
+                let next = editor.read(cx).details_state();
+                if state != next {
+                    state = next.into_owned();
+                    if view.target_visible(cx) {
+                        cx.notify();
+                    }
+                }
+            }));
+        }
         self.chart = Some(chart);
-        cx.notify();
+    }
+
+    fn target_visible(&self, cx: &App) -> bool {
+        self.log.as_ref().and_then(WeakEntity::upgrade).is_none()
+            && !self.graph.read(cx).showing_node_definition()
+    }
+
+    fn graph_visible(&self, cx: &App) -> bool {
+        self.graph.read(cx).showing_node_definition()
+            || (self.log.as_ref().and_then(WeakEntity::upgrade).is_none()
+                && self.graph(cx).is_some())
     }
 
     pub fn set_selection(
@@ -105,6 +181,7 @@ impl DetailsPanel {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.target_subscription = None;
         self.document = None;
         self.mind = None;
         self.database = None;
@@ -112,7 +189,6 @@ impl DetailsPanel {
         self.graph.update(cx, |details, cx| {
             details.set_selection(graph, nodes, projection, version, window, cx)
         });
-        cx.notify();
     }
 
     pub(super) fn show_log(
@@ -120,6 +196,14 @@ impl DetailsPanel {
         log: &Entity<super::logs::LogDetails>,
         cx: &mut Context<Self>,
     ) {
+        if self
+            .log
+            .as_ref()
+            .is_some_and(|current| current.entity_id() == log.entity_id())
+            && !self.graph.read(cx).showing_node_definition()
+        {
+            return;
+        }
         let weak = log.downgrade();
         self.log = Some(weak.clone());
         self.graph.update(cx, |graph, cx| {
@@ -163,6 +247,9 @@ impl DetailsPanel {
         cx.notify();
     }
     pub(super) fn show_node_properties(&mut self, cx: &mut Context<Self>) {
+        if !self.graph.read(cx).showing_node_definition() {
+            return;
+        }
         self.graph
             .update(cx, |graph, cx| graph.show_node_properties(cx));
         cx.notify();
@@ -171,10 +258,7 @@ impl DetailsPanel {
 
 impl Render for DetailsPanel {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if self.graph.read(cx).showing_node_definition()
-            || (self.log.as_ref().and_then(WeakEntity::upgrade).is_none()
-                && self.graph(cx).is_some())
-        {
+        if self.graph_visible(cx) {
             return self.graph.clone().into_any_element();
         }
         let panel = div()

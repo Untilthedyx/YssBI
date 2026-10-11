@@ -6,21 +6,25 @@ Use this guide to find the owner of a change before modifying the desktop, appli
 
 The binary composes Workbench; Workbench depends on feature UI crates, never the reverse. Features call typed Application use cases and consume domain projections. Shared desktop scheduling and event delivery live below the views, without GPUI.
 
-| Crate                  | Responsibility                                                                                                                             |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `yss-desktop-gpui`     | Arguments, the process Tokio runtime, GPUI initialization and final window composition                                                     |
-| `yss-workbench`        | Startup, project navigation, root DockArea, panel registration, layout restoration and cross-feature routing                               |
-| `yss-ui`               | Shared product presentation, localization, Markdown/math, preferences, keymap, window chrome, readonly resource catalog and layout storage |
-| `yss-desktop-services` | `ApplicationTasks` over the existing Application state/runtime handle, and the shared `DesktopEvents` bus                                  |
-| `yss-graph-ui`         | GraphCanvas, readonly OpenedGraph, retained GraphDetails, graph forms, diagnostics and graph result catalog                                |
-| `yss-assistant-ui`     | Retained AssistantController, conversation panels, directory/cache ownership and Assistant UI workflows                                    |
-| `yss-data-ui`          | Dataset browser/editor and import forms                                                                                                    |
-| `yss-results-ui`       | Leased result readers, reports, chart editor and plots; Workbench coordinates independent result windows                                   |
-| `yss-settings-ui`      | Retained SettingsPanel, model/knowledge settings and preference editing                                                                    |
-| `yss-resource-ui`      | Markdown documents, mind maps and their captured-version save requests                                                                     |
-| `yss-plugin-ui`        | Plugin management and native plugin views over the canonical PluginManager                                                                 |
+| Crate                  | Responsibility                                                                                                                                         |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `yss-desktop-gpui`     | Arguments, the process Tokio runtime, GPUI initialization and final window composition                                                                 |
+| `yss-workbench`        | Startup, project navigation, root DockArea, panel registration, layout restoration and cross-feature routing                                           |
+| `yss-ui`               | Shared product presentation, localization, Markdown/math, preferences, keymap, window chrome and layout storage                                        |
+| `yss-desktop-services` | `ApplicationTasks` over the existing Application state/runtime handle, the shared `DesktopEvents` bus and readonly resource catalog                    |
+| `yss-graph-ui`         | GraphCanvas, readonly OpenedGraph, retained GraphDetails, graph forms, node catalog rows, diagnostic/run-failure presentation and graph result catalog |
+| `yss-assistant-ui`     | Retained AssistantController, conversation panels, directory/cache ownership and Assistant UI workflows                                                |
+| `yss-data-ui`          | Dataset browser/editor and import forms                                                                                                                |
+| `yss-results-ui`       | Leased result readers, reports, chart editor and plots; Workbench coordinates independent result windows                                               |
+| `yss-settings-ui`      | Retained SettingsPanel, model/knowledge settings and preference editing                                                                                |
+| `yss-resource-ui`      | Markdown documents, mind maps and their captured-version save requests                                                                                 |
+| `yss-plugin-ui`        | Plugin management and native plugin views over the canonical PluginManager                                                                             |
 
 All GUI crates inherit the same workspace `gpui-kit` dependency. They do not introduce Zed's UI, theme, workspace or GPUI dependency chain. Domain, Application and `yss-desktop-services` remain GPUI-free.
+
+`yss-ui` has no direct or transitive dependency on Application, Project or graph execution. Its internal dependencies are limited to canonical hashing, data contracts, filesystem, localization and settings. Graph-specific catalog rows and feedback belong to `yss-graph-ui`. `ActivityText::resolve_with` accepts the caller's translator for keys and preserves literal text; shared localization does not import Application types.
+
+The readonly `ResourceCatalog` lives in `yss-desktop-services::resources`. Workbench builds it from the accepted ProjectIndex and shares the same `Arc` with AssistantController and cached conversations. It preserves project identity, resource/signature revisions and search indexes without introducing a second query, mutable model or GPUI dependency.
 
 `NativeServices` is private to Workbench's composition layer. Features receive narrow handles for their actual capabilities, not that aggregate. `ApplicationTasks` reuses the process Tokio handle for blocking use cases; it does not start a second runtime or own models, plugins, preferences and logging. Typed events and callbacks carry cross-feature requests, including import submission and resource/result navigation.
 

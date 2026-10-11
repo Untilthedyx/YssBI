@@ -1,5 +1,6 @@
 //! Read-only node diagnostics from the current editor projection.
 use super::GraphDetails;
+use crate::feedback::graph_diagnostic;
 use crate::problems::location;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{
@@ -9,7 +10,7 @@ use gpui_kit::component::{
 };
 use gpui_kit::{AnyElement, Context, IntoElement, div, prelude::*};
 use yss_graph_editor::projection::{EditorDiagnosticSeverity, EditorNodeModel};
-use yss_ui::text::{graph_diagnostic, translate};
+use yss_ui::text::translate;
 
 pub(super) const PAGE_DIAGNOSTICS: usize = 50;
 

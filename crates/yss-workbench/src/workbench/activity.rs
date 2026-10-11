@@ -27,7 +27,7 @@ use yss_application::activity_panel::{ActivityItem, ActivityPanelDocument, Activ
 use yss_node_catalog::NodeCreation;
 use yss_node_protocol::NodeTypeId;
 
-use crate::text::activity_text;
+use crate::text::translate;
 
 pub enum ActivityEvent {
     OpenGraph(String),
@@ -76,6 +76,8 @@ impl ActivityPanel {
     ) {
         self.set_read_state(ReadState::Ready, cx);
         if self.accepts(&document) {
+            // Advance publication metadata without replacing retained row interaction state.
+            self.document = Some(document);
             return;
         }
         if self
@@ -131,7 +133,7 @@ impl ActivityPanel {
     fn accepts(&self, document: &Arc<ActivityPanelDocument>) -> bool {
         self.document
             .as_ref()
-            .is_some_and(|current| Arc::ptr_eq(current, document))
+            .is_some_and(|current| Arc::ptr_eq(current, document) || current.same_content(document))
     }
 
     pub fn pending_conversations(

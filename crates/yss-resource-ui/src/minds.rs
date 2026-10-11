@@ -9,6 +9,7 @@ mod topics;
 
 use buffers::TopicBuffer;
 pub use commands::{MindSaveOutcome, MindSaveRequest};
+pub use details::DetailsDisplay;
 use gpui_kit::component::{
     dock::{BasePanel, Panel, PanelEvent, PanelInfo, PanelState},
     text::TextViewState,
@@ -41,7 +42,6 @@ actions!(
 
 pub enum MindEvent {
     Activated,
-    Changed,
 }
 
 enum Gesture {
@@ -163,7 +163,6 @@ impl MindCanvas {
         self.labels.retain(|id, _| visible.contains(id.as_str()));
     }
     fn changed(&self, cx: &mut Context<Self>) {
-        cx.emit(MindEvent::Changed);
         cx.notify();
     }
     fn toggle_branch(&mut self, id: String, cx: &mut Context<Self>) {

@@ -71,7 +71,7 @@ pub fn white_test(x: &Mat<f64>, residuals: &Col<f64>) -> Result<BreuschPaganResu
     let z_matrix = build_z_matrix(&z_cols, n)
         .ok_or_else(|| "white_test: failed to build Z matrix".to_string())?;
 
-    let svd = yss_sci_linalg::Svd::factor(z_matrix.as_ref())
+    let svd = yss_sci_linalg::Svd::factor_thin(z_matrix.as_ref())
         .map_err(|e| format!("white_test: SVD failed: {:?}", e))?;
     let s_sv = svd.values();
     let max_sv = s_sv.iter().next().copied().unwrap_or(0.0);
@@ -167,7 +167,7 @@ pub fn white_test_weighted(
     let z_matrix = build_z_matrix(&z_cols, n)
         .ok_or_else(|| "white_test_weighted: failed to build Z matrix".to_string())?;
 
-    let svd = yss_sci_linalg::Svd::factor(z_matrix.as_ref())
+    let svd = yss_sci_linalg::Svd::factor_thin(z_matrix.as_ref())
         .map_err(|e| format!("white_test_weighted: SVD failed: {:?}", e))?;
     let s_sv = svd.values();
     let max_sv = s_sv.iter().next().copied().unwrap_or(0.0);

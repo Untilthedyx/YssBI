@@ -1,5 +1,7 @@
 //! All chart reads use the original project publication and database resource identities.
 mod preview;
+#[cfg(test)]
+mod tests;
 use super::ChartEditor;
 use gpui_kit::{Context, Window};
 pub(super) use preview::{PreviewData, PreviewFailure};
@@ -52,6 +54,21 @@ pub fn read(
     })
 }
 impl ChartEditor {
+    fn catalog_details_changed(&self, next: &ProjectIndex) -> bool {
+        self.catalog.databases.len() != next.databases.len()
+            || self
+                .catalog
+                .databases
+                .iter()
+                .zip(&next.databases)
+                .any(|(current, next)| {
+                    current.id != next.id
+                        || current.name != next.name
+                        || (current.id == self.draft.database_id
+                            && current.revision != next.revision)
+                })
+    }
+
     pub(super) fn schedule_preview(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self._preferences_subscription.is_none() {
             self._preferences_subscription =
@@ -155,9 +172,12 @@ impl ChartEditor {
                             && view.draft != read.document
                             && (view.external_change || read.document != view.saved);
                         view.revision = read.revision;
+                        if view.catalog_details_changed(&read.catalog) {
+                            view.draft_epoch = view.draft_epoch.wrapping_add(1);
+                        }
                         view.catalog = read.catalog;
                         view.saved = read.document.clone();
-                        if !dirty {
+                        if !dirty && view.draft != read.document {
                             view.draft = read.document;
                             view.draft_epoch = view.draft_epoch.wrapping_add(1);
                         }
@@ -199,6 +219,10 @@ impl ChartEditor {
                 .map(|entry| entry.revision)
         };
         let source_changed = source_revision(&self.catalog) != source_revision(&catalog);
+        if self.catalog_details_changed(&catalog) {
+            // Menus capture this epoch. Unrelated publication changes do not stale them.
+            self.draft_epoch = self.draft_epoch.wrapping_add(1);
+        }
         self.catalog = catalog;
         let Some(revision) = revision else {
             self.available = false;

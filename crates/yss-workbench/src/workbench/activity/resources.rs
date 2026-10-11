@@ -76,7 +76,7 @@ impl ActivityPanel {
         if self
             .resources
             .as_ref()
-            .is_some_and(|resources| Arc::ptr_eq(&resources.catalog, &catalog))
+            .is_some_and(|resources| resources.catalog.same_content(&catalog))
         {
             return;
         }

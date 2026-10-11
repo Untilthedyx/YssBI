@@ -56,6 +56,25 @@ impl Workbench {
                 self.remove_graph_resource(&before.path, delta.from_revision, window, cx);
             }
         }
+        for graph in self
+            .graphs
+            .values()
+            .filter_map(gpui_kit::WeakEntity::upgrade)
+        {
+            let canvas = graph.read(cx);
+            let affected = mutation
+                .projection_status
+                .affected_graph_paths()
+                .iter()
+                .any(|path| path.as_str() == canvas.path())
+                || mutation.deltas.iter().any(|delta| {
+                    graph_path(&delta.resource) == Some(canvas.path())
+                        || canvas.graph().depends_on_resource(&delta.resource)
+                });
+            if affected {
+                graph.update(cx, |graph, cx| graph.refresh(cx));
+            }
+        }
     }
 
     fn move_graph_resource(

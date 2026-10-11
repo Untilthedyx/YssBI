@@ -2591,8 +2591,6 @@
       "graphCreateFailed": "Could not create the graph. Check project state and retry.",
       "creationChanged": "The graph has changed. Reopen the node menu.",
       "portCountRange": "Enter an integer from %{min} to %{max}.",
-      "nodeDisplayName": "Node display name",
-      "applyName": "Apply name",
       "markdownDocument": "Markdown document",
       "loadingOrSaving": "Reading or saving…",
       "unsavedChanges": "Unsaved changes",

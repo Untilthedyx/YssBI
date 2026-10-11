@@ -7,7 +7,7 @@ mod node;
 mod ports;
 
 use gpui_kit::assets::IconName;
-use gpui_kit::component::{ActiveTheme, input::InputState};
+use gpui_kit::component::ActiveTheme;
 use gpui_kit::{
     App, Context, Entity, FocusHandle, Focusable, IntoElement, Render, WeakEntity, Window, div,
     prelude::*,
@@ -48,7 +48,6 @@ pub struct GraphDetails {
     projection: Option<Arc<EditorProjectionModel>>,
     selected: Vec<NodeId>,
     version: Option<GraphEditVersion>,
-    label: Entity<InputState>,
     parameters: Entity<ParameterForm>,
     _parameter_subscription: gpui_kit::Subscription,
     ports: Vec<PortField>,
@@ -57,7 +56,7 @@ pub struct GraphDetails {
 }
 
 impl GraphDetails {
-    pub fn new(services: Arc<GraphServices>, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(services: Arc<GraphServices>, cx: &mut Context<Self>) -> Self {
         let properties =
             cx.new(|_| super::graph_properties::GraphProperties::new(services.clone()));
         let documentation = cx.new(|_| documentation::NodeDocumentation::new(services.clone()));
@@ -113,10 +112,6 @@ impl GraphDetails {
             projection: None,
             selected: vec![],
             version: None,
-            label: cx.new(|cx| {
-                InputState::new(window, cx)
-                    .placeholder(yss_ui::text::t("native.workbench.nodeDisplayName"))
-            }),
             parameters,
             _parameter_subscription: parameter_subscription,
             ports: vec![],
@@ -229,7 +224,6 @@ impl GraphDetails {
             self.diagnostics_scroll
                 .set_offset(gpui_kit::Point::default());
         }
-        let old_label = self.node().map(|node| node.display.user_label.clone());
         self.graph = Some(graph.clone());
         self.selected = nodes;
         self.projection = Some(projection.clone());
@@ -245,18 +239,6 @@ impl GraphDetails {
                 .set_offset(gpui_kit::Point::default());
         }
         self.diagnostics_page = diagnostics_page;
-        if !same_node || old_label != node.as_ref().map(|node| node.display.user_label.clone()) {
-            self.label.update(cx, |input, cx| {
-                input.set_value(
-                    node.as_ref()
-                        .and_then(|node| node.display.user_label.as_deref())
-                        .unwrap_or_default()
-                        .to_owned(),
-                    window,
-                    cx,
-                )
-            });
-        }
         self.parameters.update(cx, |parameters, cx| {
             parameters.install(
                 node.as_ref()
@@ -346,13 +328,7 @@ impl Focusable for GraphDetails {
 }
 
 impl Render for GraphDetails {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        yss_ui::text::input_placeholder(
-            &self.label,
-            "native.workbench.nodeDisplayName",
-            window,
-            cx,
-        );
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let panel = div()
             .id("details")
             .track_focus(&self.focus)

@@ -2591,8 +2591,6 @@
       "graphCreateFailed": "无法创建图，请检查项目状态后重试。",
       "creationChanged": "图已更改，请重新打开节点菜单。",
       "portCountRange": "请输入 %{min} 到 %{max} 之间的整数。",
-      "nodeDisplayName": "节点显示名称",
-      "applyName": "应用名称",
       "markdownDocument": "Markdown 文档",
       "loadingOrSaving": "正在读取或保存…",
       "unsavedChanges": "有未保存的更改",

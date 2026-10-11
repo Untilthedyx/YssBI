@@ -17,7 +17,7 @@ use list::{Results, Source};
 use std::{collections::BTreeMap, rc::Rc};
 use yss_graph_execution::{plan::ResultCategory, result::ResultValidity};
 
-struct Picker {
+pub(super) struct Picker {
     open: bool,
     list: Entity<ListState<Results>>,
     queried: bool,
@@ -27,7 +27,11 @@ struct Picker {
 }
 
 impl Picker {
-    fn new(owner: &Entity<GraphCanvas>, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub(super) fn new(
+        owner: &Entity<GraphCanvas>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let list = cx.new(|cx| {
             ListState::new(
                 Results {
@@ -61,6 +65,10 @@ impl Picker {
             task: None,
             _subscription: subscription,
         }
+    }
+
+    pub(super) fn reset(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.set_open(false, window, cx);
     }
 
     fn set_open(&mut self, open: bool, window: &mut Window, cx: &mut Context<Self>) {
@@ -205,11 +213,13 @@ impl Picker {
 }
 
 impl GraphCanvas {
-    pub(super) fn result_search(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    pub(super) fn result_search(
+        &self,
+        picker: &Entity<Picker>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let owner = cx.entity();
-        let picker = window.use_keyed_state("pin-result-search", cx, |window, cx| {
-            Picker::new(&owner, window, cx)
-        });
         picker.update(cx, |picker, cx| {
             picker.sync(self.result_entries(), self.can_edit(), window, cx)
         });
@@ -219,6 +229,7 @@ impl GraphCanvas {
         let control = picker.clone();
         let focus = list.focus_handle(cx);
         let owner = owner.downgrade();
+        let picker = picker.clone();
         Popover::new("pin-result-search")
             .open(open)
             .anchor(Anchor::TopLeft)

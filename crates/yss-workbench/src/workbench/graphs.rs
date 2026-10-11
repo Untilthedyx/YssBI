@@ -316,7 +316,6 @@ impl Workbench {
                                 cx.notify();
                             });
                         }
-                        cx.notify();
                     }
                     CanvasEvent::ShowOutput => {
                         if view
@@ -357,7 +356,6 @@ impl Workbench {
                             );
                         }
                     }
-                    CanvasEvent::Edited => cx.notify(),
                     CanvasEvent::OpenGraph(path) => {
                         view.open_dropped_graph(canvas, path, window, cx)
                     }

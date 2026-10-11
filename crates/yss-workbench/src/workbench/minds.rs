@@ -95,6 +95,15 @@ impl Workbench {
         let path = snapshot.path.as_str().to_owned();
         let services = self.services.tasks.clone();
         let mind = cx.new(|cx| MindCanvas::new(services, snapshot, cx));
+        let mut status = (mind.read(cx).dirty(), mind.read(cx).busy());
+        self.subscriptions
+            .push(cx.observe(&mind, move |_, mind, cx| {
+                let next = (mind.read(cx).dirty(), mind.read(cx).busy());
+                if status != next {
+                    status = next;
+                    cx.notify();
+                }
+            }));
         self.subscriptions
             .push(cx.subscribe(&mind, |view, mind, event, cx| {
                 if matches!(event, MindEvent::Activated) {
@@ -102,8 +111,6 @@ impl Workbench {
                         .update(cx, |details, cx| details.set_mind(mind.downgrade(), cx));
                     view.activate_file(mind.read(cx).path().to_owned(), cx);
                 }
-                view.details.update(cx, |_, cx| cx.notify());
-                cx.notify();
             }));
         self.minds.insert(path, mind.downgrade());
         self.present_panel(

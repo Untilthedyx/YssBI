@@ -25,19 +25,10 @@ tokio = { workspace = true, features = ["sync", "time"] }
 tracing.workspace = true
 url.workspace = true
 open = "5.4.1"
-yss-application = { path = "../yss-application" }
 yss-canonical-hash = { path = "../yss-canonical-hash" }
 yss-data-contract = { path = "../yss-data-contract" }
 yss-filesystem = { path = "../yss-filesystem" }
-yss-graph-diagnostics = { path = "../yss-graph-diagnostics" }
-yss-graph-editor = { path = "../yss-graph-editor" }
-yss-graph-execution = { path = "../yss-graph-execution" }
-yss-harness-contract = { path = "../yss-harness-contract" }
 yss-i18n = { path = "../yss-i18n" }
-yss-node-catalog = { path = "../yss-node-catalog" }
-yss-node-protocol = { path = "../yss-node-protocol" }
-yss-project = { path = "../yss-project" }
-yss-project-identity = { path = "../yss-project-identity" }
 yss-settings = { path = "../yss-settings" }
 
 [dev-dependencies]

@@ -9,6 +9,7 @@ mod semantic;
 mod toolbar;
 
 pub use commands::{DatabaseSaveOutcome, DatabaseSaveRequest};
+pub use details::DetailsDisplay;
 use gpui_kit::component::{
     dock::{BasePanel, Panel, PanelEvent, PanelInfo, PanelState},
     input::TextareaState,
@@ -35,7 +36,6 @@ actions!(
 );
 pub enum DatabaseEvent {
     Activated,
-    Changed,
     SessionChanged,
 }
 
@@ -154,7 +154,6 @@ impl DatabaseEditor {
         cx.emit(DatabaseEvent::Activated);
     }
     fn changed(&self, cx: &mut Context<Self>) {
-        cx.emit(DatabaseEvent::Changed);
         cx.notify();
     }
     pub fn install_read(

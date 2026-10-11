@@ -17,7 +17,7 @@ pub(super) fn cards(
     owner: &WeakEntity<ConversationPanel>,
     artifacts: &[ResourceChange],
     results: &[AssistantResultReference],
-    catalog: Option<&yss_ui::resources::ResourceCatalog>,
+    catalog: Option<&yss_desktop_services::resources::ResourceCatalog>,
     cx: &App,
 ) -> AnyElement {
     let mut cards = div().id(scope.into()).min_w_0().flex().flex_col().gap_2();

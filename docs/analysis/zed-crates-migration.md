@@ -6,16 +6,16 @@
 - 输入材料：`zed-crates-guide-2026-10-10.md`（用户提供的 Zed crates 职责清单）。
 - Zed 源码基线：[`96984225abc235519e66b5c6c9ed23b87621f868`](https://github.com/zed-industries/zed/tree/96984225abc235519e66b5c6c9ed23b87621f868)。该清单统计 `crates/` 下 249 个工作区成员，以及 `extensions/`、`tooling/` 下另 7 个成员。
 - 评估不涉及版权；重点是职责适配、依赖、状态所有权、运行时与维护成本。
-- 原分析数字来自重构前工作区，未绑定不可变提交；保留为基线，不是当前清单。下节记录本次实施结果。YssBI 源码链接指向当前 `main` 路径，上游链接固定到上述提交。
+- 原分析数字来自重构前工作区，未绑定不可变提交；保留为基线，不是当前清单。下节分轮记录实施结果。YssBI 源码链接指向当前 `main` 路径，上游链接固定到上述提交。
 
 本文位于 mdBook 正文之外，保留分析快照、候选顺序与实施记录。当前架构以[系统架构](../src/development/architecture.md)和模块契约为准；未实施的产品能力仍由仓库 [TODO](../../TODO.md) 管理。
 
-## 本次重构落地
+## 第一轮：职责与生命周期拆分
 
 已完成 P0/P1 所要求的职责与生命周期拆分，没有整包引入 Zed 的领域或 UI 系统。
 
 - 薄入口只保留参数、进程 Tokio runtime、GPUI 初始化和最终窗口组装；项目、Dock、窗口协调与跨功能导航归 `yss-workbench`。
-- 提取 Graph、Assistant、Data、Results、Settings、Resource、Plugin 七个功能 UI crate。`yss-ui` 只共享产品呈现；无 GPUI 的 `yss-desktop-services` 只共享后台 Application 调用与事件，不是完整服务定位器。当前 owner 见[架构表](../src/development/architecture.md#dependency-direction)。
+- 提取 Graph、Assistant、Data、Results、Settings、Resource、Plugin 七个功能 UI crate。建立共享呈现 `yss-ui` 与无 GPUI 的后台 Application 调用、事件层 `yss-desktop-services`，后者不是完整服务定位器。共享 UI 的业务依赖泄漏在第二轮继续收紧；当前 owner 见[架构表](../src/development/architecture.md#dependency-direction)。
 - AssistantController 接管目录查询、会话强缓存、请求代次及会话操作；GraphDetails 接管图属性表单。设置和会话实体跨窗口隐藏保留，导入通过类型化事件提交；功能 crate 不依赖 Workbench。
 - `yss-project-operation` 合入 Project 私有 `project_operation` 模块，保留准入、重放和 reservation 释放；`yss-display-naming` 合入 Application 私有 `display_naming` 模块，保留原名称分配语义。旧独立包和调用路径已移除。
 - `yss-application::runtime` 仍是平台中立组合根。没有新增第二宿主或替换存储需求，因此不建立 `yss-bootstrap`；SCI Runtime 的真实报告适配、共享身份/布局/Schema 契约和 Store 查询边界保持原 owner。
@@ -29,15 +29,41 @@
 | 桌面入口 `src` Rust 文件     |    346 |      1 |
 | 桌面入口 `src` Rust 物理行数 | 65,122 |     86 |
 
-增加 10 个职责明确的 crate、合并 2 个单消费者包；入口缩小来自功能迁移，不是删除原功能。当前正常/构建内部依赖图有 324 条边、无环；入口只直接依赖 `yss-ui` 与 `yss-workbench` 两个内部包。全部 GUI crate 继承同一 `gpui-kit` 版本及 features；Project、Application、桌面任务与事件层的依赖闭包没有 GPUI。
+增加 10 个职责明确的 crate、合并 2 个单消费者包；入口缩小来自功能迁移，不是删除原功能。第一轮结束时正常/构建内部依赖图有 324 条边、无环；入口只直接依赖 `yss-ui` 与 `yss-workbench` 两个内部包。全部 GUI crate 继承同一 `gpui-kit` 版本及 features；Project、Application、桌面任务与事件层的依赖闭包没有 GPUI。
 
-本次验证：
+第一轮验证：
 
 - 原生入口 all-targets 编译检查、开发可执行文件构建通过；13 个受影响包的 all-targets Clippy（`--no-deps -- -D warnings`）和格式检查通过。
 - 既有行为测试共 26 项通过：共享 UI 9、Data UI 1、Resource UI 7、Project 操作账本 5、Application 名称分配 4。
 - 隔离目录中的 Linux/X11 原生窗口完成图执行、结果独立窗口租约交接、示例导入/末页分页、会话草稿隐藏重开、失败后重试另存为与项目切换、文档/Mind/图表保存、偏好及布局重启恢复。具体场景和未覆盖范围见[桌面集成验收](../../crates/yss-desktop-gpui/README.md)。
 
 P2 的编码识别、JSONC 编辑、HTML 导入及统一取消桥接仍以真实需求为前提；现有 Tokio handle 被复用，但未引入一套新的自动 abort 语义。P3 的沙箱、MCP/ACP、IDE 编辑、分发等不是此次职责重构的交付项，也没有用占位实现宣称完成。未验证真实模型服务、签名插件执行、Windows/macOS 或完整物理输入行为。
+
+## 第二轮：消除共享 UI 的业务依赖泄漏
+
+第一轮拆包后，`yss-ui` 仍通过图诊断、节点目录行、资源目录和 `ActivityText` 翻译辅助函数依赖 Application、Project 及执行链。复用通用控件因此仍会带入完整业务栈；这不是继续增加 crate 能解决的问题。
+
+- 将节点目录行移入 `yss-graph-ui::catalog_rows`，图诊断与运行失败文案移入 `yss-graph-ui::feedback`；画布、属性、问题面板、侧栏和 Workbench 输出迁移到同一实现。
+- 将 GPUI 无关的只读 `ResourceCatalog` 移入既有 `yss-desktop-services::resources`。保留同一 `Arc` 分发、项目身份、资源/函数签名版本、排序和搜索，不新增查询或资源状态。
+- `ActivityText::resolve_with` 由调用方提供翻译器，字面文本不翻译、不插值；`yss-ui::text` 不再导入 Application 类型。
+- 删除旧模块、旧公共辅助函数和不再需要的依赖，不保留兼容转发，也不新增 crate。
+
+| 正常/构建内部依赖指标 | 第二轮前 | 第二轮后 |
+| --- | ---: | ---: |
+| Workspace packages | 69 | 69 |
+| `yss-ui` 直接依赖 | 14 | 5 |
+| `yss-ui` 传递依赖（不含自身） | 57 | 5 |
+| Workspace 内部依赖边 | 324 | 316 |
+
+数据来自 `cargo metadata --no-deps --format-version 1 --offline`。依赖图仍无环，功能 UI 不反向依赖 Workbench；`yss-ui` 的内部闭包仅含 canonical-hash、data-contract、filesystem、i18n、settings。另用 `cargo tree -p yss-ui --edges normal,build --offline` 核查实际解析树，没有 Application、Project、Database Engine、DataFusion、Arrow、Rig 或 Plugin Runtime。这里证明的是编译依赖隔离，不是未经测量的构建耗时提升。
+
+第二轮验证：
+
+- `yss-ui` 独立 all-targets 检查通过；共享 UI 既有 9 项测试和 Application 字面文本绕过翻译/插值的回归测试通过。
+- UI、Desktop Services、Graph UI、Assistant UI、Workbench、Application、桌面入口这 7 个受影响包的 all-targets Clippy（`--no-deps -- -D warnings`）通过，桌面可执行文件重新构建成功。
+- 使用隔离应用数据和项目，重建后的 Linux/X11 原生窗口验证了中文节点分类/名称、`sqrt` 搜索与创建、缺失输入及未解析类型诊断，以及助手资源选择器中的当前图和 Markdown 文档名称、路径。未将禁用的运行按钮当成执行失败分支验证，也未调用真实模型服务。
+
+Store 与 DataFusion 的耦合还涉及 `edits/rows`、`edits/columns` 的编辑准备和压实，不只是 `DatasetSnapshot::query`。本轮没有只移动查询方法便宣称存储与引擎已解耦，也未改变该边界。
 
 ## 结论
 

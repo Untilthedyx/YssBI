@@ -46,3 +46,8 @@ yss-ui-contract = { path = "../yss-ui-contract" }
 yss-filesystem = { path = "../yss-filesystem" }
 yss-settings = { path = "../yss-settings" }
 yss-logging = { path = "../yss-logging" }
+
+[dev-dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }
+tempfile = "3"
+yss-project = { path = "../yss-project", features = ["test-support"] }

@@ -62,9 +62,9 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
 | 当前 owner | 模块与状态 |
 | --- | --- |
 | [yss-workbench](../yss-workbench/src) | `workbench`、`projects`、`project`、私有 `services`、启动与窗口状态；Dock、导航、项目操作和独立窗口协调 |
-| [yss-ui](../yss-ui/src) | `text`/assets、Markdown/math、preferences、appearance、keymap、window_chrome、modal_window、layout_store、resources 和共用产品控件 |
-| [yss-desktop-services](../yss-desktop-services/src) | 无 GPUI 的 `ApplicationTasks`、`DesktopEvents`；复用已有 ApplicationState 和 Tokio handle |
-| [yss-graph-ui](../yss-graph-ui/src) | `canvas`、`opened_graph`、`details`、`graph_properties`、`parameters`、`node_creation`、`problems`、图结果目录 |
+| [yss-ui](../yss-ui/src) | `text`/assets、Markdown/math、preferences、appearance、keymap、window_chrome、modal_window、layout_store 和共用产品控件；不依赖 Application、Project 或图执行链 |
+| [yss-desktop-services](../yss-desktop-services/src) | 无 GPUI 的 `ApplicationTasks`、`DesktopEvents`、`resources` 只读目录；复用已有 ApplicationState 和 Tokio handle |
+| [yss-graph-ui](../yss-graph-ui/src) | `canvas`、`opened_graph`、`details`、`graph_properties`、`parameters`、`node_creation`、`problems`、`catalog_rows`、`feedback`、图结果目录 |
 | [yss-assistant-ui](../yss-assistant-ui/src) | `assistant` 面板及 `controller` 的会话强缓存、目录查询、重命名、删除和读取代次 |
 | [yss-data-ui](../yss-data-ui/src) | `databases`、`imports`；导入表单通过 `ImportSubmission` 事件请求宿主提交 |
 | [yss-results-ui](../yss-results-ui/src) | `results` 阅读器/报告/租约、`charts`、`plots` |
@@ -74,6 +74,17 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
 
 功能 crate 不依赖 Workbench 具体类型。Workbench 保留功能实体与订阅，跨功能只路由类型化事件、命令和共享只读投影；
 完整 `NativeServices` 只在组合层使用，功能服务仅暴露所需能力。GPUI Kit 的版本和 grammar features 统一由根 workspace 声明。
+
+局部更新以保留的编辑器实体为边界：正文输入只通知其 owner；Workbench 只比较 dirty、busy、编辑模式及标题等宿主显示状态。
+页签与状态栏仍响应保存、运行和关闭保护需要的状态变化，Dock 缓存与布局 owner 不因每次正文编辑而重建。
+Details 只保留当前目标的一份订阅，比较借用的显示投影；正文、光标等未参与属性显示的变化不重绘属性面板，
+切换目标释放旧订阅，错误、路径、选区与图/日志/节点定义的显示优先级仍按实际状态更新。
+
+图刷新由变更回执中的受影响路径及 resolver 依赖清单路由，包含尚未解析成功的数据库与函数依赖。
+相同的编辑身份、版本、语言、运行会话、依赖基线和图投影不重新安装画布，不清除拖动、连接及已有展示状态。
+同项目连续的文档/思维导图正文保存回执直接推进已接纳目录版本；名称、路径和目录内容未变化时不重建目录行。
+文件监听保留单路径变更范围，事务 owner 的私有暂存路径不作为资源发布；重复写入同一路径不会升级成全项目刷新。
+已知资源路径只校对该资源，本地保存回声不重复失效其他资源；多路径合并、事件丢失或元数据/数据库/目录等未知范围仍执行权威重扫。
 
 - `projects/form`：新建与另存为的未提交名称和目录输入；默认位置由原 registry owner 查询。
   提交复用原生命周期用例，部分写入失败保留已写入目标和恢复入口，不重复创建。
@@ -299,7 +310,7 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
   运行中 Enter 或入队按钮捕获新消息，停止按钮仍独立可用；输入框展开仅调整同一控件的行数，不创建另一份输入。
   行首或空白后的 `@` 打开原资源选择器并阻止字符插入；普通邮箱文本保留 `@`，关闭选择器回到原输入。
   用户消息使用带边框的编辑区底色，回复直接排版；复制使用图标，逐次模型调用显示 Token 用量并可展开详情，错误和运行活动直接显示。
-- `yss-ui::resources`：从工作台已接纳的 ProjectIndex 一次生成只读资源目录，包含六类资源的类型身份、名称、资源/函数签名版本、路径索引与搜索文本。
+- `yss-desktop-services::resources`：从工作台已接纳的 ProjectIndex 一次生成只读资源目录，包含六类资源的类型身份、名称、资源/函数签名版本、路径索引与搜索文本。
   目录通过同一 Arc 交给 AssistantController，再分发给当前项目的缓存会话；对话不独立查询项目索引。
 - `assistant/references`：草稿、队列、未确认原文和历史消息共用引用标签；历史名称来自记录，其余显示当前目录名称。
   打开与移除是独立操作，已删除资源保留引用并显示不可用，草稿仍可移除。打开复用工作台原资源入口、并发打开保护和失败提示，事件路由重新核验会话项目。
@@ -422,6 +433,7 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
 - `workbench/sidebar` 与 `workbench/dock`：侧栏标题区居中横排项目、节点、助手与插件图标，点击切换下方内容，重复点击当前项保持展开；
   标题区高 36px，按钮点击区 28px，内置资源图标固定 16px、间距 4px，选中使用低对比背景和底部短线。
   图标作为 Button 的子内容，以明确像素尺寸隔离组件默认图标尺寸与 rem 缩放；继续使用组件 Button 的焦点、禁用和提示行为。
+  四个入口由按 Dock 分组保留的缓存实体绘制，仅在选中、可用状态、语言或主题变化时失效，节点拖动不重绘该实体。
   顶部横排入口对应 [Cursor 的 Activity Bar Top 配置](https://forum.cursor.com/t/tab-titles-name-are-not-displayed-in-the-agents-view/160073/6)，
   图标尺寸参考 [VS Code 横排 Activity Bar 样式](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/browser/parts/media/paneCompositePart.css)。
   不显示独立竖向图标栏，收放通过状态栏的左侧栏开关完成。选中提示直接读取根 DockArea；渲染器仅持有工作台弱引用以路由导航操作。
@@ -442,6 +454,8 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
   [ThreadView](https://github.com/zed-industries/zed/blob/main/crates/agent_ui/src/conversation_view/thread_view.rs)，业务执行继续使用现有 Harness。
   中心编辑区最后一个标签仍提供关闭按钮与菜单，遵守编辑器的未保存、忙碌和运行中保护；
   `workbench/dock/single_tab` 复用原生 Tab/TabBar 呈现该边界情况，关闭由根 DockArea 交付原移除生命周期。
+  图、数据、文档、思维导图和图表编辑器统一在 dirty 页签标题末尾显示 ` *`，清除 dirty 后移除标记；
+  标题字体、选中态与关闭按钮继续由同一 Dock 呈现，标记不改变各编辑器的保存、检查点或关闭保护语义。
   关闭全部标签后中心区不显示标签栏，由 `workbench/dock/watermark` 显示居中的 YssBI 品牌与本地化描述；
   整个中心为空时水印直接读取根 DockArea；仅保留对话时，由无标签的 EmptyEditor 面板维持右侧编辑区及同一水印，
   防止组件自动清理空分组后对话铺满编辑区。打开资源后根布局移除 EmptyEditor，关闭最后一个对话释放对话列。
@@ -504,7 +518,7 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
   `workbench/graphs` 从接收画布在根 DockArea 中的实际位置取得目标分组；首次打开移动原加载标签，异步读取沿原生命周期在同组替换。
   已打开的图和加载标签继续在其原分组复用并激活，不另存拖放分组或复制读取任务。
   `workbench/chrome` 在存在原生拖动时用 GPUI 的取消入口处理 Escape，松键不再交付；无拖动时保留原控件和画布的 Escape 行为。
-- `catalog_rows`：节点菜单与侧栏共用分类图标、节点图标、标题、类型提示和不可用标记；资源绑定项使用独立方法图标。
+- `yss-graph-ui::catalog_rows`：节点菜单与侧栏共用分类图标、节点图标、标题、类型提示和不可用标记；资源绑定项使用独立方法图标。
   展开、搜索、预览、拖动及创建动作仍归各宿主，显示组件不持有目录副本或业务状态。
 - `workbench/layout` 与 `yss-ui::layout_store`：保存组件库原生 DockAreaState，按项目恢复布局和资源；
   文件事务及写入排序在 worker 完成，不建立另一套布局模型。进程内结果标签不进入持久布局，也不恢复为“上次结果”占位；已打开报告的实体与租约仍归当前 DockArea。
@@ -571,7 +585,7 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
   显式图选择恢复图属性，后台图投影继续更新原表单而不抢占日志检查；资源切换和项目替换沿用原清理入口。
 - `details/node`：组合当前节点的名称、参数、诊断、描述统计、端口及文档；不复制完整节点模型。
   选择安装借用同一不可变投影，端口草稿按地址查找并沿用原字段事实比较，避免逐项扫描和移除旧数组。
-- `details/diagnostics`：读取当前节点的原始诊断，复用 `text::graph_diagnostic` 格式化；按后端 severity 显示图标、颜色及标签。
+- `details/diagnostics`：读取当前节点的原始诊断，复用 `yss-graph-ui::feedback::graph_diagnostic` 格式化；按后端 severity 显示图标、颜色及标签。
   位置显示节点、参数、端口或连线两端名称；参数行提示仍保留，诊断区默认展开且无诊断时隐藏。
   每页最多 50 条，跨页列表在有界区域滚动；同一节点投影或语言刷新保留展开和有效页码，切换节点重置。
   分页与折叠回调受选择代次约束；不再分析图或维护一份诊断事实。
@@ -731,6 +745,9 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
   双击通过原 InsertReroute 事务插入转接点，失败只在选择仍未改变时恢复单击前的选择；框选取消同样恢复原节点与连线选择，Escape 不清除静态选择。
   框选只在选中集合改变时发布选择，Output 订阅投影和执行事件，避免随画布指针移动刷新。
 - `canvas/toolbar`：画布之外的固定操作栏，常用动作使用带提示的图标，局部运行和刷新放入更多菜单。
+  工具栏由图实体持有，WorkbenchTabs 将其缓存视图放在标签栏下方、缓存画布内容之外；分组切换、拆分和放大沿用同一 owner。
+  Dock 重绘缓存画布时会强制刷新其内部缓存，不能靠在画布内再包一层 `Entity::cached` 隔离工具栏。
+  工具栏只比较命令可用性、运行状态、结果目录、图会话和语言等显示状态，节点移动及平移缩放不使其失效。
   指针交互 bounds 只覆盖画布，工具栏不会遮挡节点或触发选择/平移；菜单动作绑定对应画布焦点。
   运行按钮说明 Function 图、在途操作、读取失败、运行同步或全图阻断原因；同步状态在同一栏呈现，刷新沿用更多菜单。
   全图阻断从原编辑投影随 presentation 更新派生，重绘不扫描诊断；未提交端口输入先沿原事务应用，再检查新投影。
@@ -969,10 +986,20 @@ Assistant 关闭/重开保留草稿、另存为 `/proc` 的真实失败反馈与
 真实项目验收使用副本：项目激活沿用目录初始化与数据库维护，编辑通过 Project 修改内存状态，
 只有显式保存或现有助手事务写图正文。原项目路径 `/home/zy/New YssBI Project/` 不作为迁移编辑验收目标。
 
+局部更新的 Linux/X11 原生窗口验证同样使用隔离副本：已进入 dirty 状态的文档连续输入 10 个字符，
+属性、目录和旁边的图均未重绘；文档保存与外部正文修改均未触发无关图重读，外部正文实际显示在编辑器中。
+旁边图仍有未保存修改时，文档保存也不触发图重读，图的节点位置、选中态与 dirty 标记保持不变。
+另已验证文档、思维导图和图表的 dirty/保存状态、数据库属性及直方图预览。此项不替代跨平台、IME 和完整资源生命周期验收。
+
+节点拖动的原生窗口验证覆盖普通布局与分屏布局：持续移动时画布继续绘制，侧栏四个入口与图工具栏未重绘，捕获帧的两处像素保持一致。
+已核对名称编辑区移除、四个导航入口、撤销/重做/保存、运行与结果搜索/更多菜单，以及混合标签切换和图分组放大后的工具栏位置。
+
 ```sh
 cargo check -p yss-desktop-gpui --all-targets
 cargo clippy -p yss-workbench -p yss-graph-ui --all-targets --no-deps -- -D warnings
 cargo test -p yss-ui -p yss-data-ui -p yss-resource-ui --lib
+cargo test -p yss-filesystem -p yss-project -p yss-graph-ui -p yss-workbench -p yss-results-ui --lib
+cargo test -p yss-application --lib graph::catalog::tests
 cargo fmt -p yss-desktop-gpui -p yss-workbench -p yss-graph-ui -- --check
 ```
 
@@ -1031,7 +1058,8 @@ Fedora 需要 C/C++ 工具链以及 fontconfig、libxkbcommon、Wayland/X11、Op
 核对明暗主题、中英文、窄面板滚动，以及旧清除/定位回调不能作用于另一图、语义或执行会话。
 
 节点诊断人工验收：选择有节点、端口、参数及连线问题的节点，核对本地化消息、严重程度和名称，定位标签应使用显示名称。
-同节点刷新和语言切换保留未提交名称/参数/端口输入及诊断折叠状态；切换节点、清空选择、删除节点及切换图时不能残留旧诊断。
+节点属性不提供“显示名称”输入或应用操作；已有命名仍用于只读标题和诊断标签。
+同节点刷新和语言切换保留未提交参数/端口输入及诊断折叠状态；切换节点、清空选择、删除节点及切换图时不能残留旧诊断。
 超过 50 条时逐页访问，核对翻页回到列表顶部、诊断减少后页码收敛及旧分页回调失效；无诊断隐藏整个区块。
 图表列目录核对无数据集、零列、超过 50 列和长名称提示；目录变化沿用原元数据刷新与页码收敛。
 

@@ -9,9 +9,9 @@ use crate::{
 use gpui_kit::{App, AppContext, Context, Entity, EventEmitter, Subscription, Window};
 use std::{collections::BTreeMap, sync::Arc};
 use yss_application::activity_panel::{ActivityItem, ActivityPanelDocument, ActivityRowContent};
+use yss_desktop_services::resources::ResourceCatalog;
 use yss_harness_contract::{HarnessSessionId, HarnessSessionRecord, ProjectResourceRef};
 use yss_project_identity::ProjectInstanceId;
-use yss_ui::resources::ResourceCatalog;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum DirectoryReadState {

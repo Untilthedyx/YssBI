@@ -146,6 +146,22 @@ impl Workbench {
             Some(read) => editor.install_read(read, window, cx),
             None => editor.fail_read(cx),
         });
+        let mut status = (
+            editor.read(cx).dirty(),
+            editor.read(cx).busy(),
+            editor.read(cx).name().to_owned(),
+        );
+        self.subscriptions
+            .push(cx.observe(&editor, move |_, editor, cx| {
+                let editor = editor.read(cx);
+                if status.0 != editor.dirty()
+                    || status.1 != editor.busy()
+                    || status.2 != editor.name()
+                {
+                    status = (editor.dirty(), editor.busy(), editor.name().to_owned());
+                    cx.notify();
+                }
+            }));
         let mut read_failed = editor.read(cx).read_failed();
         self.subscriptions.push(cx.subscribe_in(
             &editor,
@@ -166,10 +182,7 @@ impl Workbench {
                     DatabaseEvent::SessionChanged => {
                         view.rebind_session(window, cx);
                     }
-                    DatabaseEvent::Changed => {}
                 }
-                view.details.update(cx, |_, cx| cx.notify());
-                cx.notify();
             },
         ));
         self.databases.insert(id, editor.downgrade());

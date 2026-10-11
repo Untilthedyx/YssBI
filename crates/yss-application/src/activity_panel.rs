@@ -10,20 +10,30 @@ use crate::session::ApplicationState;
 
 mod assistant;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ActivityText {
     Key(&'static str),
     Literal(String),
 }
 
-#[derive(Debug)]
+impl ActivityText {
+    /// Resolves a localized key with the caller's translator, leaving literals untouched.
+    pub fn resolve_with(&self, translate: impl FnOnce(&str) -> String) -> String {
+        match self {
+            Self::Key(key) => translate(key),
+            Self::Literal(value) => value.clone(),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub struct ActivityTool {
     pub id: &'static str,
     pub label: ActivityText,
     pub icon: &'static str,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ActivityItem {
     Conversation {
         session_id: String,
@@ -75,7 +85,7 @@ pub enum ActivityItem {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ActivityRowContent {
     Category {
         label: ActivityText,
@@ -90,7 +100,7 @@ pub enum ActivityRowContent {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ActivityRow {
     pub id: String,
     pub depth: usize,
@@ -109,6 +119,16 @@ pub struct ActivityPanelDocument {
 }
 
 impl ActivityPanelDocument {
+    /// Publication revisions change for content saves without changing this panel.
+    pub fn same_content(&self, other: &Self) -> bool {
+        self.panel_id == other.panel_id
+            && self.project_instance_id == other.project_instance_id
+            && self.title == other.title
+            && self.tools == other.tools
+            && self.rows == other.rows
+            && self.empty_state == other.empty_state
+    }
+
     fn new(panel_id: &'static str, title: &'static str) -> Self {
         Self {
             panel_id,
@@ -493,4 +513,19 @@ pub fn plugins_activity_panel(plugins: &[InstalledPlugin]) -> ActivityPanelDocum
             }),
         }));
     document
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ActivityText;
+
+    #[test]
+    fn literals_bypass_translation_and_interpolation() {
+        let literal = "common.undo {name} %{count}\n原文";
+        let text = ActivityText::Literal(literal.to_owned());
+        assert_eq!(
+            text.resolve_with(|_| panic!("literal must not invoke the translator")),
+            literal
+        );
+    }
 }

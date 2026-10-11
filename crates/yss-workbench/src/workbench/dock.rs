@@ -32,6 +32,7 @@ pub(super) fn create(
             workbench,
             center_bottom_margin: Cell::new(px(0.)),
             measurements: Rc::new(regions::Measurements::default()),
+            navigation_headers: Rc::new(sidebar::NavigationHeaders::default()),
         });
         renderer = Some(skin.clone());
         DockArea::new("yssbi-workbench", None, window, cx).with_renderer(skin)
@@ -49,6 +50,7 @@ pub(super) struct WorkbenchDock {
     workbench: WeakEntity<Workbench>,
     center_bottom_margin: Cell<Pixels>,
     measurements: Rc<regions::Measurements>,
+    navigation_headers: Rc<sidebar::NavigationHeaders>,
 }
 
 impl WorkbenchDock {
@@ -57,6 +59,7 @@ impl WorkbenchDock {
     }
 
     pub(super) fn update_style(&self, area: &DockArea, cx: &App) {
+        self.navigation_headers.retain_groups(area);
         let hide_strip = !area.is_zoomed()
             && !area.is_dock_open(DockPlacement::Bottom)
             && area.layout(DockPlacement::Bottom).is_some_and(|tree| {
@@ -85,6 +88,7 @@ impl DockAreaRenderer for WorkbenchDock {
         self.skin.frame(window, cx).child(zoom_sidebar::Sidebar {
             area: self.area.clone(),
             workbench: self.workbench.clone(),
+            navigation_headers: self.navigation_headers.clone(),
         })
     }
 
@@ -175,6 +179,7 @@ impl DockAreaRenderer for WorkbenchDock {
             area: self.area.clone(),
             workbench: self.workbench.clone(),
             measurements: self.measurements.clone(),
+            navigation_headers: self.navigation_headers.clone(),
         })
     }
 }
@@ -184,6 +189,7 @@ struct WorkbenchTabs {
     area: WeakEntity<DockArea>,
     workbench: WeakEntity<Workbench>,
     measurements: Rc<regions::Measurements>,
+    navigation_headers: Rc<sidebar::NavigationHeaders>,
 }
 
 impl TabGroupRenderer for WorkbenchTabs {
@@ -233,7 +239,7 @@ impl TabGroupRenderer for WorkbenchTabs {
         window: &mut Window,
         cx: &mut App,
     ) -> AnyElement {
-        if group
+        let tabs = if group
             .panels()
             .iter()
             .all(super::layout::columns::is_empty_editor)
@@ -254,6 +260,7 @@ impl TabGroupRenderer for WorkbenchTabs {
                     group.node(),
                     &self.area,
                     &self.workbench,
+                    &self.navigation_headers,
                     cx,
                 ))
                 .when(
@@ -280,6 +287,34 @@ impl TabGroupRenderer for WorkbenchTabs {
             single_tab::render(panel, group, &self.area, window, cx)
         } else {
             self.skin.render_tab_bar(group, window, cx)
+        };
+        let toolbar = (!group.is_collapsed())
+            .then(|| group.active_panel())
+            .flatten()
+            .filter(|panel| panel.visible(cx))
+            .and_then(|panel| panel.view().downcast::<crate::canvas::GraphCanvas>().ok())
+            .map(|canvas| canvas.read(cx).toolbar_view());
+        if let Some(toolbar) = toolbar {
+            // Keep graph chrome beside, rather than inside, the active panel's
+            // cache: rebuilding that cache forces every nested cache to refresh.
+            div()
+                .w_full()
+                .min_w_0()
+                .flex()
+                .flex_col()
+                .flex_shrink_0()
+                .child(tabs)
+                .child(
+                    toolbar.cached(
+                        gpui_kit::StyleRefinement::default()
+                            .w_full()
+                            .h_8()
+                            .flex_shrink_0(),
+                    ),
+                )
+                .into_any_element()
+        } else {
+            tabs
         }
     }
 

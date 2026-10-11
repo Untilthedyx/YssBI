@@ -114,8 +114,7 @@ impl Workbench {
         cx.notify();
     }
     pub(super) fn reset_layout(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.details =
-            cx.new(|cx| super::DetailsPanel::new(self.services.graph.clone(), window, cx));
+        self.details = cx.new(|cx| super::DetailsPanel::new(self.services.graph.clone(), cx));
         self.problems = cx.new(super::ProblemsPanel::new);
         self.output = cx.new(super::OutputPanel::new);
         self.results = cx.new(super::ResultsPanel::new);

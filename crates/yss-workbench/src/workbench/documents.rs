@@ -95,6 +95,23 @@ impl Workbench {
         let path = snapshot.path.as_str().to_owned();
         let services = self.services.tasks.clone();
         let document = cx.new(|cx| DocumentEditor::new(services, snapshot, window, cx));
+        let mut status = (
+            document.read(cx).dirty(),
+            document.read(cx).busy(),
+            document.read(cx).is_editing(),
+        );
+        self.subscriptions
+            .push(cx.observe(&document, move |_, document, cx| {
+                let next = (
+                    document.read(cx).dirty(),
+                    document.read(cx).busy(),
+                    document.read(cx).is_editing(),
+                );
+                if status != next {
+                    status = next;
+                    cx.notify();
+                }
+            }));
         self.subscriptions
             .push(cx.subscribe(&document, |view, document, event, cx| {
                 if matches!(event, DocumentEvent::Activated) {
@@ -103,8 +120,6 @@ impl Workbench {
                     });
                     view.activate_file(document.read(cx).path().to_owned(), cx);
                 }
-                view.details.update(cx, |_, cx| cx.notify());
-                cx.notify();
             }));
         self.documents.insert(path, document.downgrade());
         self.present_panel(

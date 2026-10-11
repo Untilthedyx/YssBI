@@ -8,11 +8,13 @@ use gpui_kit::component::{
 use gpui_kit::{
     AnyElement, App, Empty, IntoElement, RenderOnce, WeakEntity, Window, div, prelude::*,
 };
+use std::rc::Rc;
 
 #[derive(IntoElement)]
 pub(super) struct Sidebar {
     pub area: WeakEntity<DockArea>,
     pub workbench: WeakEntity<Workbench>,
+    pub navigation_headers: Rc<sidebar::NavigationHeaders>,
 }
 
 impl RenderOnce for Sidebar {
@@ -35,7 +37,14 @@ impl RenderOnce for Sidebar {
             .flex_shrink_0()
             .overflow_hidden()
             .bg(cx.theme().sidebar)
-            .child(render_node(&node, &self.area, &self.workbench, window, cx))
+            .child(render_node(
+                &node,
+                &self.area,
+                &self.workbench,
+                &self.navigation_headers,
+                window,
+                cx,
+            ))
             .into_any_element()
     }
 }
@@ -44,6 +53,7 @@ fn render_node(
     node: &PaneNode,
     area: &WeakEntity<DockArea>,
     workbench: &WeakEntity<Workbench>,
+    headers: &sidebar::NavigationHeaders,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
@@ -61,7 +71,7 @@ fn render_node(
                     .iter()
                     .enumerate()
                     .map(|(ix, node)| {
-                        let content = render_node(node, area, workbench, window, cx);
+                        let content = render_node(node, area, workbench, headers, window, cx);
                         div()
                             .min_h_0()
                             .min_w_0()
@@ -108,7 +118,13 @@ fn render_node(
                 .is_some_and(|panel| !sidebar::is_navigation(panel));
             let mut frame = div().size_full().flex().flex_col().overflow_hidden();
             if navigation {
-                frame = frame.child(sidebar::render_header(node.id(), area, workbench, cx));
+                frame = frame.child(sidebar::render_header(
+                    node.id(),
+                    area,
+                    workbench,
+                    headers,
+                    cx,
+                ));
             }
             if !navigation || resource_active {
                 let tabs = panels

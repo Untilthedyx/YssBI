@@ -624,7 +624,44 @@ pub(crate) fn file_index<T: ResourceFile>(
 pub(crate) fn external_changes<T: ResourceFile>(
     root: &Path,
     data: &ProjectData,
+    only: Option<&FilePath<T>>,
 ) -> Result<Vec<FilePatch<T>>, ProjectOperationError> {
+    if let Some(path) = only {
+        let previous = T::files(data).get(path);
+        match std::fs::symlink_metadata(root.join(path.as_str())) {
+            Ok(_) => {
+                let content = read_file_content(root, path).map_err(error)?;
+                if previous
+                    .is_some_and(|previous| previous.dirty() || previous.content() == &content)
+                {
+                    return Ok(Vec::new());
+                }
+                let session = previous.map_or_else(
+                    || uuid::Uuid::new_v4().to_string(),
+                    |previous| previous.version.session_id.clone(),
+                );
+                let mut document = FileState::<T>::new(content, session).map_err(error)?;
+                if let Some(previous) = previous {
+                    document.version.revision = crate::project_state::checked_resource_revision(
+                        path.as_str(),
+                        previous.version.revision,
+                    )?;
+                }
+                return Ok(vec![FilePatch::Put {
+                    path: path.clone(),
+                    document,
+                }]);
+            }
+            Err(io) if io.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(previous
+                    .filter(|previous| !previous.dirty())
+                    .map(|_| FilePatch::Remove { path: path.clone() })
+                    .into_iter()
+                    .collect());
+            }
+            Err(io) => return Err(error(io)),
+        }
+    }
     let incoming = load_files::<T>(root).map_err(error)?;
     let removed = T::files(data)
         .iter()

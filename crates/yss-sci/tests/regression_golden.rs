@@ -2011,6 +2011,63 @@ fn test_wls_golden() {
 }
 
 #[test]
+fn tall_rank_deficient_residual_diagnostics_preserve_statistics() -> Result<(), String> {
+    let observations = 4096;
+    let design = Mat::from_fn(observations, 2, |row, column| {
+        if column == 0 || row % 8 >= 4 {
+            1.0
+        } else {
+            0.0
+        }
+    });
+    let residuals = Col::from_fn(observations, |row| match row % 8 {
+        0 => -1.0,
+        1 => 1.0,
+        2 | 4 => -2.0,
+        3 | 5 => 2.0,
+        6 => -3.0,
+        _ => 3.0,
+    });
+    let weights = Col::from_fn(observations, |row| if row % 8 < 4 { 1.0 } else { 0.5 });
+
+    // The binary predictor duplicates its square in White's design. Balanced
+    // residual signs make skewness zero; group moments give exact LM ratios.
+    let unweighted = diagnostics::im_test::im_test(&design, &residuals)?;
+    let weighted = diagnostics::im_test::im_test_weighted(&design, &residuals, &weights)?;
+    for (result, heteroskedasticity_ratio) in [(unweighted, 16.0 / 33.0), (weighted, 9.0 / 131.0)] {
+        let expected_heteroskedasticity = observations as f64 * heteroskedasticity_ratio;
+        let expected_kurtosis = observations as f64 * 1849.0 / 5961.0;
+        assert_eq!(result.heteroskedasticity.df, 1);
+        assert_eq!(result.skewness.df, 1);
+        assert_eq!(result.kurtosis.df, 1);
+        assert_eq!(result.total.df, 3);
+        for (actual, expected) in [
+            (result.heteroskedasticity.chi2, expected_heteroskedasticity),
+            (result.skewness.chi2, 0.0),
+            (result.kurtosis.chi2, expected_kurtosis),
+            (
+                result.total.chi2,
+                expected_heteroskedasticity + expected_kurtosis,
+            ),
+        ] {
+            assert!(
+                approx_eq(actual, expected, TOL, TOL_REL),
+                "chi2: got {actual}, expected {expected}"
+            );
+        }
+        assert!(approx_eq(result.skewness.p_value, 1.0, TOL, TOL_REL));
+        for probability in [
+            result.heteroskedasticity.p_value,
+            result.kurtosis.p_value,
+            result.total.p_value,
+        ] {
+            assert!((0.0..1e-10).contains(&probability));
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn test_diagnostics_direct_helpers() {
     let (exog, endog, _weights) = load_iris();
     let ols = OLS {
