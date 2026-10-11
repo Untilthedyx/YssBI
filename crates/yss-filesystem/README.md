@@ -75,4 +75,8 @@ RootLifecycleGuard 在关闭新准入后允许已准入操作排空，再取得�
 新候选安装前若已被另一个 watch 抢占空位，会重新处理当前会话；不会等待 Active 状态自行消失。
 epoch 过滤只决定准入，已经进入的回调由 source session 的排空契约负责完成；不另建无人消费的在途计数。
 
+`stop()` 先关闭旧 epoch 与 source 准入，非阻塞检查未完成时，由该排空过程唯一的后台清理线程继续完成；
+不依赖下一次 `watch()` 或 owner 的 Drop，重复停止与 Drop 也不会重复启动清理线程。
+非阻塞检查的“尚未完成”不记录为超时；后台实际等待超时仍报告一次警告并继续排空，worker panic 与清理线程启动失败保留错误日志。
+
 Project 在自己的模块中解释项目入口、选择索引输入路径、校验文档，并将 FilesystemError 转成 ProjectOperationError；Application 决定项目切换时何时启动或关闭监听。CSV/Parquet 等格式与数据集存储继续由各自的业务 owner 管理。

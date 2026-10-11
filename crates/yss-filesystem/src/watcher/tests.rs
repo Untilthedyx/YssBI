@@ -249,6 +249,50 @@ impl FileWatcherSession for DrainSession {
     }
 }
 
+#[test]
+fn stopping_drains_worker_without_another_watch_or_owner_drop() {
+    let (release, waiting) = mpsc::channel();
+    let (joined, completed) = mpsc::channel();
+    let worker_done = Arc::new(AtomicBool::new(false));
+    let worker = thread::spawn({
+        let worker_done = worker_done.clone();
+        move || {
+            waiting.recv().expect("worker is released");
+            worker_done.store(true, Ordering::Release);
+        }
+    });
+    let factory = Arc::new(DrainFactory {
+        drain: Mutex::new(Some(Box::new(BlockingDrain {
+            worker: Some(worker),
+            worker_done,
+            join_count: Arc::new(AtomicUsize::new(0)),
+            joined,
+        }))),
+        starts: AtomicUsize::new(0),
+    });
+    let state = Arc::new(WatcherState::for_test(factory));
+    state
+        .watch("project", RecordingSink::new())
+        .expect("watcher starts");
+
+    let (stopped, stop_completed) = mpsc::channel();
+    let stopping = thread::spawn({
+        let state = state.clone();
+        move || {
+            state.stop();
+            stopped.send(()).expect("stop result is observed");
+        }
+    });
+    let stop_result = stop_completed.recv_timeout(Duration::from_secs(5));
+    release.send(()).expect("worker is still owned");
+    stopping.join().expect("stop thread completes");
+    stop_result.expect("stop returns without waiting for the worker callback");
+    completed
+        .recv_timeout(Duration::from_secs(5))
+        .expect("stop drains the worker while the idle watcher owner remains alive");
+    drop(state);
+}
+
 struct GatedDrain {
     entered: Sender<()>,
     release: Receiver<()>,

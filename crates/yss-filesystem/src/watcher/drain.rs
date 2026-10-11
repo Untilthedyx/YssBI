@@ -1,6 +1,7 @@
 use super::{
     FileWatcherDrain, FileWatcherDrainOutcome, FileWatcherSession, WatcherShutdownControl,
 };
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex, PoisonError};
 use std::thread;
 use std::time::Duration;
@@ -22,6 +23,7 @@ enum DrainState {
 pub(super) struct DrainCell {
     state: Mutex<DrainState>,
     changed: Condvar,
+    reaper_started: AtomicBool,
 }
 
 impl DrainCell {
@@ -29,6 +31,7 @@ impl DrainCell {
         Self {
             state: Mutex::new(DrainState::Pending(DrainOwner::Session(session))),
             changed: Condvar::new(),
+            reaper_started: AtomicBool::new(false),
         }
     }
 
@@ -109,11 +112,49 @@ impl FileWatcherDrain for DrainHandle {
 }
 
 pub(super) fn spawn_drain_reaper(cell: Arc<DrainCell>) {
-    let _ = thread::Builder::new()
+    if cell.reaper_started.swap(true, Ordering::AcqRel) {
+        return;
+    }
+    let reaper = cell.clone();
+    if let Err(error) = thread::Builder::new()
         .name("yss-filesystem-watcher-reaper".into())
         .spawn(move || {
-            while let FileWatcherDrainOutcome::TimedOut(_) =
-                cell.finish(WatcherShutdownControl::after(WATCHER_REAPER_TIMEOUT))
-            {}
-        });
+            let mut timeout_reported = false;
+            loop {
+                match reaper.finish(WatcherShutdownControl::after(WATCHER_REAPER_TIMEOUT)) {
+                    FileWatcherDrainOutcome::Drained => return,
+                    FileWatcherDrainOutcome::WorkerPanicked => {
+                        tracing::error!(
+                            target: "yss_filesystem::watcher",
+                            log_domain = "system",
+                            log_event = "watcherWorkerPanicked",
+                            "Filesystem watcher worker panicked while shutting down"
+                        );
+                        return;
+                    }
+                    FileWatcherDrainOutcome::TimedOut(drain) => {
+                        if !timeout_reported {
+                            let error = super::WatcherError::TimedOut(drain);
+                            tracing::warn!(
+                                target: "yss_filesystem::watcher",
+                                log_domain = "system",
+                                error = %error,
+                                "Filesystem watcher shutdown remains pending"
+                            );
+                            timeout_reported = true;
+                        }
+                    }
+                }
+            }
+        })
+    {
+        cell.reaper_started.store(false, Ordering::Release);
+        tracing::error!(
+            target: "yss_filesystem::watcher",
+            log_domain = "system",
+            log_event = "watcherReaperStartFailed",
+            error = %error,
+            "Failed to start filesystem watcher cleanup"
+        );
+    }
 }

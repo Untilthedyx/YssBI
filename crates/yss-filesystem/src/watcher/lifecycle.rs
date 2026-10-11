@@ -7,7 +7,7 @@ use super::{
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex, PoisonError};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 const WATCHER_SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(1);
 
@@ -86,13 +86,24 @@ impl WatcherState {
     }
 
     pub fn stop(&self) {
-        if let Err(error) = self.retire_active(WatcherShutdownControl::new(Instant::now())) {
-            tracing::warn!(
-                target: "yss_filesystem::watcher",
-                log_domain = "system",
-                error = %error,
-                "Filesystem watcher shutdown remains pending"
-            );
+        let Some((epoch, drain)) = self.begin_retirement() else {
+            return;
+        };
+        // Close source admission now, but let the reaper finish a busy worker.
+        // A nonblocking poll is not a shutdown deadline failure.
+        match drain.finish(WatcherShutdownControl::after(Duration::ZERO)) {
+            FileWatcherDrainOutcome::TimedOut(_) => spawn_drain_reaper(drain),
+            outcome => {
+                if matches!(outcome, FileWatcherDrainOutcome::WorkerPanicked) {
+                    tracing::error!(
+                        target: "yss_filesystem::watcher",
+                        log_domain = "system",
+                        log_event = "watcherWorkerPanicked",
+                        "Filesystem watcher worker panicked while shutting down"
+                    );
+                }
+                self.finish_draining(epoch, &drain);
+            }
         }
     }
 
