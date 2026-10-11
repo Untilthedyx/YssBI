@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use crate::ProjectOperationError;
 use crate::ProjectSession;
+use crate::project_operation::ProjectOperationReservation;
 use yss_filesystem::{FilesystemTransaction, StagedFilesystemMutation, TransactionContext};
 use yss_graph_document::{GraphDocument, GraphResourcePath};
 use yss_project_identity::{ProjectInstanceId, ResourceRevision};
-use yss_project_operation::ProjectOperationReservation;
 
 use super::state::ProjectState;
 

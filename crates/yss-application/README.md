@@ -9,13 +9,15 @@
 
 ## 调用方与依赖方向
 
-原生宿主 `yss-desktop-gpui` 直接调用 `ApplicationServices::initialize` 和类型化用例；阻塞调用在宿主 worker 中完成，回执与事件以 Rust 类型交付。
+`yss-workbench` 的私有组合层调用 `ApplicationServices::initialize`；功能 UI 通过 `yss-desktop-services::ApplicationTasks` 在既有 Tokio worker 中调用类型化用例，回执与事件以 Rust 类型交付。薄入口 `yss-desktop-gpui` 不再直接依赖 Application。
 
 下图展示主要直接依赖方向；Project、Graph、Database 和契约节点各自代表一组 crate，不是完整的 workspace 依赖图。
 
 ```mermaid
 flowchart TD
-    ROOT["yss-desktop-gpui：构造与注入"] --> APP["yss-application"]
+    ROOT["yss-workbench：构造与注入"] --> APP["yss-application"]
+    UI["功能 UI"] --> TASKS["yss-desktop-services：后台调用与事件"]
+    TASKS --> APP
     APP --> PROJECT["Project：项目与资源"]
     APP --> GRAPH["Graph：编辑与解析"]
     APP --> EXEC["yss-graph-execution"]
@@ -36,6 +38,8 @@ Application 的 `runtime` 消费中立路径和 Harness 端口。普通用例模
 直接依赖、features 与开发依赖以 [Cargo.toml](Cargo.toml) 为准；workspace 成员见[根 Cargo.toml](../../Cargo.toml)，模块导航见[开发指南](../../docs/src/development.md)，不在 README 中复制计数或依赖清单。
 
 项目生命周期见 [project](src/project/README.md)，数据用例见 [database](src/database/README.md)，图用例见 [graph](src/graph/README.md)。
+
+数据库显示名分配由私有 `src/display_naming.rs` 负责，保留精确匹配与最小可用后缀语义；不再维护只有本 crate 消费的独立 `yss-display-naming` 包。
 
 Mind/Markdown 的 Application 用例分别位于 `src/minds.rs` 和 `src/docs.rs`，负责捕获和重验应用会话；
 正文编辑、路径校验和文件事务由 [Project](../yss-project/README.md) 与

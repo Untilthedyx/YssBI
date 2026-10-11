@@ -27,18 +27,21 @@ Distribute the resulting `resources` folder with the binary. See the [sample ass
 
 [Cargo.toml](https://github.com/zhouyi207/YssBI/blob/main/Cargo.toml) owns workspace membership and shared dependencies. These are useful starting points, not a second complete package inventory:
 
-| Area                                       | Source entry                                                                                                 |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| Desktop windows, workbench and views       | [yss-desktop-gpui](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-desktop-gpui/README.md)           |
-| Typed use cases and composition            | [yss-application](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-application/README.md)             |
-| Project resources and persistence          | [yss-project](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-project/README.md)                     |
-| Graph edits, execution and result delivery | [Application graph](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-application/src/graph/README.md) |
-| Graph-independent node invocation          | [yss-node-kernel](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-node-kernel/README.md)             |
-| Dataset generations and commits            | [yss-database-store](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-database-store/README.md)       |
-| Statistical orchestration                  | [yss-sci-runtime](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-sci-runtime/README.md)             |
-| Assistant runtime and tools                | [yss-harness-core](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-harness-core/README.md)           |
-| External plugin lifecycle                  | [yss-plugin-runtime](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-plugin-runtime/README.md)       |
-| Structured observations                    | [yss-logging](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-logging/README.md)                     |
+| Area                                        | Source entry                                                                                                                                                                                       |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Desktop entry and integration acceptance    | [yss-desktop-gpui](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-desktop-gpui/README.md)                                                                                                 |
+| Window, project and Dock coordination       | [yss-workbench](https://github.com/zhouyi207/YssBI/tree/main/crates/yss-workbench/src)                                                                                                             |
+| Shared presentation and background delivery | [yss-ui](https://github.com/zhouyi207/YssBI/tree/main/crates/yss-ui/src), [yss-desktop-services](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-desktop-services/src/desktop_services.rs) |
+| Feature views and their retained owners     | [Desktop crate boundaries](./development/architecture.md#dependency-direction)                                                                                                                     |
+| Typed use cases and composition             | [yss-application](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-application/README.md)                                                                                                   |
+| Project resources and persistence           | [yss-project](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-project/README.md)                                                                                                           |
+| Graph edits, execution and result delivery  | [Application graph](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-application/src/graph/README.md)                                                                                       |
+| Graph-independent node invocation           | [yss-node-kernel](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-node-kernel/README.md)                                                                                                   |
+| Dataset generations and commits             | [yss-database-store](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-database-store/README.md)                                                                                             |
+| Statistical orchestration                   | [yss-sci-runtime](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-sci-runtime/README.md)                                                                                                   |
+| Assistant runtime and tools                 | [yss-harness-core](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-harness-core/README.md)                                                                                                 |
+| External plugin lifecycle                   | [yss-plugin-runtime](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-plugin-runtime/README.md)                                                                                             |
+| Structured observations                     | [yss-logging](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-logging/README.md)                                                                                                           |
 
 Read the [architecture guide](./development/architecture.md) for state ownership and dependency direction. Module READMEs describe the detailed interfaces and lifecycle contracts.
 

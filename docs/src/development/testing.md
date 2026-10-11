@@ -6,12 +6,22 @@ Choose checks that exercise the changed behavior and its consumers. Compilation,
 
 Run Cargo commands from the repository root. Select the affected package and target explicitly. A change to shared types, serialization or cross-module behavior also needs the relevant consumer checks; testing only the edited crate is not sufficient.
 
-For the native desktop:
+For the native desktop, include the feature crate being changed. For example, a graph UI change:
 
 ```sh
-cargo check -p yss-desktop-gpui --bin yss-desktop-gpui
-cargo clippy -p yss-desktop-gpui --bin yss-desktop-gpui --no-deps -- -D warnings
-cargo fmt -p yss-desktop-gpui -- --check
+cargo check -p yss-desktop-gpui --all-targets
+cargo clippy -p yss-desktop-gpui -p yss-workbench -p yss-graph-ui --all-targets --no-deps -- -D warnings
+cargo fmt -p yss-desktop-gpui -p yss-workbench -p yss-graph-ui -- --check
+```
+
+The binary is now a thin entry point. Its compilation checks dependency interfaces, but selecting only that package does not run the feature libraries' tests or format/lint their source. Include `yss-ui`, `yss-desktop-services` and other affected features when their contracts change.
+
+Existing desktop behavior tests and the merged private-module tests run under their current owners:
+
+```sh
+cargo test -p yss-ui -p yss-data-ui -p yss-resource-ui --lib
+cargo test -p yss-project --lib project_operation
+cargo test -p yss-application --lib display_naming
 ```
 
 For a library, use its package and the relevant test filter. For example, to run the Graph Runtime library tests:
@@ -33,6 +43,8 @@ Review [state ownership](./architecture.md#state-ownership), dependency directio
 Exercise the changed path in the native application with isolated application data and a project copy. Include the relevant success, failure, cancellation and late-result behavior. Check focus, keyboard/IME, pointer input, resize, theme and platform behavior where the change affects them.
 
 A component test or event-injected preview does not establish physical input, accessibility, repaint timing, multiple-window behavior or support on another operating system. Keep those acceptance items open until they are exercised. The [desktop README](https://github.com/zhouyi207/YssBI/blob/main/crates/yss-desktop-gpui/README.md) retains detailed scenarios; [TODO.md](https://github.com/zhouyi207/YssBI/blob/main/TODO.md) tracks remaining work.
+
+For crate-boundary changes, exercise cross-owner paths: run a graph and open a leased result in another window; close the source tab; import and paginate a real dataset; save document, mind and chart edits; hide/reopen Assistant input; fail and then complete a project switch; change preferences and restart with saved DockArea layout. Use `YSSBI_APP_DATA_DIR` with an absolute temporary directory to avoid touching normal application state. These scenarios do not establish real-provider streaming, signed plugin execution, physical IME behavior or untested platform support.
 
 ## Documentation and generated data
 

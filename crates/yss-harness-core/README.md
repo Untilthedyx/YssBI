@@ -627,7 +627,7 @@ Transport recovery retries only the latest sampling boundary, at most five conse
 
 原生会话视图在订阅实时事件后读取持久历史，以会话身份和连续 sequence 接纳交付；
 缺口与有界缓冲溢出通过原持久序列恢复。视图投影不生成轮次、工作流或工具终态。
-具体实现见 [原生事件交付](../yss-desktop-gpui/src/assistant/stream.rs)，
+具体实现见 [原生事件交付](../yss-assistant-ui/src/assistant/stream.rs)，
 呈现、输入、工具卡片和人工验收归 [GPUI host](../yss-desktop-gpui/README.md)。
 
 `submit_harness_turn.resources` 只接收 `{kind,id}`。Core 先登记轮次准入和取消令牌，再通过 `HarnessResourceResolverPort` 调用 Application；后者在 blocking pool 复用资源工具的 Project index，检查项目绑定、真实成员和重复项，并补充权威显示名。资源与模型解析不持有会话选择锁；完成后 Core 重新读取和验证会话。解析期间取消立即结束等待，迟到的只读结果不能启动模型或发布 `TurnStarted`。Core 将 `{resource,name}` 随 `TurnStarted` 持久化，当前请求和历史回放使用同一个 user-input 投影。模型得到资源定位信息，按任务需要调用资源工具读取正文或结果；引用不携带 revision/hash/同步状态，也不提前展开完整图或数据行。没有隐式的 active graph 参数。资源在之后被修改或删除时，读取工具仍检查当前事实；历史引用不会跟随编辑器焦点改变。

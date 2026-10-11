@@ -12687,7 +12687,6 @@ dependencies = [
  "yss-database-source",
  "yss-database-store",
  "yss-dataset-profile",
- "yss-display-naming",
  "yss-filesystem",
  "yss-function-editor-projection",
  "yss-graph-analysis",
@@ -12725,6 +12724,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "yss-assistant-ui"
+version = "0.4.0"
+dependencies = [
+ "chrono",
+ "gpui-kit",
+ "percent-encoding",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "url",
+ "uuid",
+ "yss-application",
+ "yss-desktop-services",
+ "yss-graph-execution",
+ "yss-harness-contract",
+ "yss-harness-core",
+ "yss-project-identity",
+ "yss-settings",
+ "yss-ui",
+]
+
+[[package]]
 name = "yss-canonical-hash"
 version = "0.1.0"
 dependencies = [
@@ -12753,6 +12774,23 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.20",
+]
+
+[[package]]
+name = "yss-data-ui"
+version = "0.4.0"
+dependencies = [
+ "anyhow",
+ "gpui-kit",
+ "serde_json",
+ "url",
+ "yss-application",
+ "yss-data-contract",
+ "yss-database-contract",
+ "yss-database-schema",
+ "yss-desktop-services",
+ "yss-project-identity",
+ "yss-ui",
 ]
 
 [[package]]
@@ -12880,62 +12918,26 @@ name = "yss-desktop-gpui"
 version = "0.4.0"
 dependencies = [
  "anyhow",
- "arborium-julia",
- "bigdecimal",
- "chrono",
- "directories",
  "gpui-kit",
- "hex",
- "lru 0.18.5",
- "markdown",
- "open",
- "percent-encoding",
- "ratex-layout",
- "ratex-parser",
- "ratex-svg",
- "ratex-types",
- "rust-i18n-support",
- "serde",
- "serde_json",
  "tokio",
- "tracing",
- "tree-sitter-r",
- "url",
- "uuid",
- "yss-application",
- "yss-canonical-hash",
- "yss-chart-document",
- "yss-data-contract",
- "yss-database-contract",
- "yss-database-schema",
- "yss-dataset-profile",
- "yss-filesystem",
- "yss-graph-analysis-contract",
- "yss-graph-diagnostics",
- "yss-graph-document",
- "yss-graph-editor",
- "yss-graph-execution",
- "yss-harness-contract",
- "yss-harness-core",
- "yss-i18n",
- "yss-logging",
- "yss-node-catalog",
- "yss-node-kernel",
- "yss-node-protocol",
- "yss-plugin-runtime",
- "yss-project",
- "yss-project-history",
- "yss-project-identity",
- "yss-project-model",
- "yss-project-registry",
- "yss-project-registry-contract",
- "yss-settings",
- "yss-ui-contract",
+ "yss-ui",
+ "yss-workbench",
 ]
 
 [[package]]
-name = "yss-display-naming"
-version = "0.1.0"
+name = "yss-desktop-services"
+version = "0.4.0"
+dependencies = [
+ "anyhow",
+ "tokio",
+ "tracing",
+ "uuid",
+ "yss-application",
+ "yss-harness-contract",
+ "yss-project",
+ "yss-project-identity",
+ "yss-ui-contract",
+]
 
 [[package]]
 name = "yss-filesystem"
@@ -13108,6 +13110,33 @@ dependencies = [
  "thiserror 2.0.20",
  "yss-data-contract",
  "yss-node-protocol",
+]
+
+[[package]]
+name = "yss-graph-ui"
+version = "0.4.0"
+dependencies = [
+ "anyhow",
+ "gpui-kit",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "uuid",
+ "yss-application",
+ "yss-canonical-hash",
+ "yss-data-contract",
+ "yss-desktop-services",
+ "yss-graph-analysis-contract",
+ "yss-graph-document",
+ "yss-graph-editor",
+ "yss-graph-execution",
+ "yss-node-catalog",
+ "yss-node-protocol",
+ "yss-project",
+ "yss-project-history",
+ "yss-project-identity",
+ "yss-results-ui",
+ "yss-ui",
 ]
 
 [[package]]
@@ -13314,6 +13343,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "yss-plugin-ui"
+version = "0.4.0"
+dependencies = [
+ "anyhow",
+ "gpui-kit",
+ "serde_json",
+ "tokio",
+ "uuid",
+ "yss-application",
+ "yss-plugin-runtime",
+ "yss-ui",
+]
+
+[[package]]
 name = "yss-project"
 version = "0.1.0"
 dependencies = [
@@ -13340,7 +13383,6 @@ dependencies = [
  "yss-project-identity",
  "yss-project-layout",
  "yss-project-model",
- "yss-project-operation",
  "yss-resource-lifecycle",
  "yss-resource-naming",
 ]
@@ -13388,14 +13430,6 @@ dependencies = [
  "yss-project-identity",
  "yss-project-layout",
  "yss-resource-naming",
-]
-
-[[package]]
-name = "yss-project-operation"
-version = "0.1.0"
-dependencies = [
- "thiserror 2.0.20",
- "yss-project-identity",
 ]
 
 [[package]]
@@ -13472,6 +13506,44 @@ dependencies = [
 ]
 
 [[package]]
+name = "yss-resource-ui"
+version = "0.4.0"
+dependencies = [
+ "gpui-kit",
+ "serde_json",
+ "uuid",
+ "yss-application",
+ "yss-desktop-services",
+ "yss-project",
+ "yss-project-identity",
+ "yss-project-model",
+ "yss-settings",
+ "yss-ui",
+]
+
+[[package]]
+name = "yss-results-ui"
+version = "0.4.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "gpui-kit",
+ "serde_json",
+ "yss-application",
+ "yss-chart-document",
+ "yss-data-contract",
+ "yss-database-contract",
+ "yss-database-schema",
+ "yss-dataset-profile",
+ "yss-desktop-services",
+ "yss-graph-execution",
+ "yss-node-kernel",
+ "yss-project",
+ "yss-project-identity",
+ "yss-ui",
+]
+
+[[package]]
 name = "yss-sci"
 version = "0.1.0"
 dependencies = [
@@ -13525,6 +13597,67 @@ dependencies = [
 ]
 
 [[package]]
+name = "yss-settings-ui"
+version = "0.4.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "gpui-kit",
+ "serde_json",
+ "tracing",
+ "uuid",
+ "yss-application",
+ "yss-desktop-services",
+ "yss-harness-contract",
+ "yss-logging",
+ "yss-project",
+ "yss-project-identity",
+ "yss-project-model",
+ "yss-settings",
+ "yss-ui",
+]
+
+[[package]]
+name = "yss-ui"
+version = "0.4.0"
+dependencies = [
+ "anyhow",
+ "arborium-julia",
+ "bigdecimal",
+ "gpui-kit",
+ "hex",
+ "lru 0.18.5",
+ "markdown",
+ "open",
+ "ratex-layout",
+ "ratex-parser",
+ "ratex-svg",
+ "ratex-types",
+ "rust-i18n-support",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tree-sitter-r",
+ "url",
+ "uuid",
+ "yss-application",
+ "yss-canonical-hash",
+ "yss-data-contract",
+ "yss-filesystem",
+ "yss-graph-diagnostics",
+ "yss-graph-editor",
+ "yss-graph-execution",
+ "yss-harness-contract",
+ "yss-i18n",
+ "yss-node-catalog",
+ "yss-node-protocol",
+ "yss-project",
+ "yss-project-identity",
+ "yss-settings",
+]
+
+[[package]]
 name = "yss-ui-contract"
 version = "0.1.0"
 dependencies = [
@@ -13532,6 +13665,50 @@ dependencies = [
  "serde",
  "thiserror 2.0.20",
  "yss-project-identity",
+]
+
+[[package]]
+name = "yss-workbench"
+version = "0.4.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "directories",
+ "gpui-kit",
+ "open",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "uuid",
+ "yss-application",
+ "yss-assistant-ui",
+ "yss-chart-document",
+ "yss-data-ui",
+ "yss-desktop-services",
+ "yss-filesystem",
+ "yss-graph-analysis-contract",
+ "yss-graph-document",
+ "yss-graph-editor",
+ "yss-graph-execution",
+ "yss-graph-ui",
+ "yss-harness-contract",
+ "yss-logging",
+ "yss-node-catalog",
+ "yss-node-protocol",
+ "yss-plugin-runtime",
+ "yss-plugin-ui",
+ "yss-project",
+ "yss-project-history",
+ "yss-project-identity",
+ "yss-project-model",
+ "yss-project-registry",
+ "yss-project-registry-contract",
+ "yss-resource-ui",
+ "yss-results-ui",
+ "yss-settings",
+ "yss-settings-ui",
+ "yss-ui",
+ "yss-ui-contract",
 ]
 
 [[package]]

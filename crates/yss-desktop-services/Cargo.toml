@@ -1,0 +1,19 @@
+[package]
+name = "yss-desktop-services"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+path = "src/desktop_services.rs"
+
+[dependencies]
+anyhow = "1"
+tokio = { workspace = true, features = ["sync"] }
+tracing.workspace = true
+uuid.workspace = true
+yss-application = { path = "../yss-application" }
+yss-harness-contract = { path = "../yss-harness-contract" }
+yss-project = { path = "../yss-project" }
+yss-project-identity = { path = "../yss-project-identity" }
+yss-ui-contract = { path = "../yss-ui-contract" }

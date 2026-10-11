@@ -1,0 +1,21 @@
+[package]
+name = "yss-data-ui"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+path = "src/data_ui.rs"
+
+[dependencies]
+anyhow = "1"
+gpui-kit.workspace = true
+serde_json.workspace = true
+url.workspace = true
+yss-application = { path = "../yss-application" }
+yss-data-contract = { path = "../yss-data-contract" }
+yss-database-contract = { path = "../yss-database-contract" }
+yss-database-schema = { path = "../yss-database-schema" }
+yss-desktop-services = { path = "../yss-desktop-services" }
+yss-project-identity = { path = "../yss-project-identity" }
+yss-ui = { path = "../yss-ui" }

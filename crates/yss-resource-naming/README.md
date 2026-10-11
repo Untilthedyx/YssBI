@@ -8,7 +8,7 @@
 `ResourceName` validates one resource name without I/O or project state. Graph,
 Chart, Mind and Doc path owners reuse this contract and supply their own
 directory and extension rules. Database display names use the distinct
-[display-name allocator](../yss-display-naming/src/lib.rs).
+[Application's private display-name allocator](../yss-application/src/display_naming.rs).
 
 Names must already be NFC and contain only Unicode letters, numbers, ASCII
 spaces, hyphens, underscores and parentheses. Spaces cannot lead, trail or

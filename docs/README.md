@@ -53,9 +53,10 @@ Repository-only evaluations live outside the book so historical measurements and
 unimplemented proposals are not presented as current product behavior.
 
 - [Zed crates 迁移与 YssBI 组织分析](analysis/zed-crates-migration.md):
-  migration candidates, replacement boundaries, crate organization and proposed
-  sequencing, based on the 2026-10-10 analysis snapshot. This is an evaluation,
-  not an approved roadmap; selected open work remains in the root `TODO.md`.
+  migration candidates and replacement boundaries from the 2026-10-10 analysis,
+  plus the implemented desktop crate reorganization and its verification scope.
+  Conditional upstream capabilities remain proposals; selected open work belongs
+  in the root `TODO.md`.
 
 ## Format and check
 

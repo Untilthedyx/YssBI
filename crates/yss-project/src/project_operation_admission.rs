@@ -1,10 +1,10 @@
 use crate::ProjectOperationError;
 use crate::ProjectState;
-use std::sync::Arc;
-use yss_project_identity::{OperationId, ProjectInstanceId};
-use yss_project_operation::{
+use crate::project_operation::{
     ProjectOperationAdmissionError, ProjectOperationLedger, ProjectOperationReservation,
 };
+use std::sync::Arc;
+use yss_project_identity::{OperationId, ProjectInstanceId};
 
 impl ProjectState {
     pub(crate) fn reserve_resource_operation(

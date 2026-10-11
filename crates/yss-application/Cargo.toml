@@ -38,7 +38,6 @@ yss-database-contract = { path = "../yss-database-contract" }
 yss-database-runtime = { path = "../yss-database-runtime" }
 yss-database-schema = { path = "../yss-database-schema" }
 yss-dataset-profile = { path = "../yss-dataset-profile" }
-yss-display-naming = { path = "../yss-display-naming" }
 yss-database-store = { path = "../yss-database-store" }
 arrow.workspace = true
 yss-database-arrow = { path = "../yss-database-arrow" }

@@ -1,8 +1,8 @@
 # GPUI desktop host
 
 > Status: Current
-> Scope: GPUI 原生桌面入口、项目导航、工作台、资源及图表编辑、执行结果、Assistant、模型设置与插件管理
-> Canonical owners: Cargo.toml、src/main.rs、src/window_chrome.rs、src/modal_window.rs、src/services.rs、src/projects/、src/workbench/、src/canvas/、src/documents/、src/markdown.rs、src/minds/、src/databases/、src/charts/、src/plots/、src/imports/、src/plugins/、src/settings/、src/text.rs、src/assistant/、src/file_commands.rs
+> Scope: 桌面 crate 家族的集成契约与验收；本 crate 只保留原生启动和最终组装
+> Canonical owners: [src/main.rs](src/main.rs)、[Workbench](../yss-workbench/src)、[共享 UI](../yss-ui/src)、[任务与事件](../yss-desktop-services/src)，以及下表中的功能 crate
 > Update when: 原生宿主能力、状态所有权、启动方式或验收范围变化时
 
 这是 workspace 的默认原生桌面入口，GPUI 系列只直接依赖 [GPUI Kit](https://docs.rs/gpui-kit/0.7.1/gpui_kit/) 0.7.1。
@@ -16,7 +16,7 @@ GPUI Pre 0.3.8、Base/Component/Assets 0.7.1 仍是必要的传递依赖，根 C
 基础界面优先复用 `gpui_kit::component`：标题区域使用原窗口图标与主题，菜单使用 `AppMenuBar`，工作台使用 `DockSkin` 与根 `DockArea`，
 数据库及结果使用 `Table`，设置使用 `Settings / SettingPage / SettingGroup / SettingItem / SettingField`，输入、菜单、按钮、
 Markdown 与常规表单使用对应原生控件。主题由 `appearance` 统一设置，不另建基础组件或布局模型。
-图、Mind 画布与专用预览保留本模块的绘制和交互；业务状态、校验及异步提交仍归现有 owner。
+图、Mind 画布与专用预览由各功能 crate 保留绘制和交互；业务状态、校验及异步提交仍归现有 owner。
 应用内表单和确认提示统一由 `modal_window` 使用 GPUI `WindowKind::Dialog` 承载，复用设置窗口的标题栏、边框、主题和组件控件，
 父窗口不绘制 Dialog 遮罩。图、数据库、图表和供应商删除，以及放弃设置，保留明确的危险按钮。
 文件和目录选择仍使用系统选择器。设置和日志继续使用独立的非模态窗口。
@@ -32,7 +32,7 @@ cargo run -- /absolute/path/to/project charts/example.yssbi-chart
 cargo build --release
 ```
 
-根 Cargo profile 对开发构建的宿主及 GPUI、Naga 着色器编译器、路径细分和布局依赖做定向优化，保留调试信息；
+根 Cargo profile 对开发构建的入口、Workbench、共享与功能 UI，以及 GPUI、Naga 着色器编译器、路径细分和布局依赖做定向优化，保留调试信息；
 普通 `cargo run` 会直接应用这些配置。WGPU 每次新建窗口都会同步编译着色器，Naga 的定向优化
 减少设置等独立窗口打开时的主线程停顿。首次构建受影响依赖会更慢，业务 crate 仍沿用默认开发配置。
 帧率验收使用 `cargo run --release`：120Hz 每帧预算约 8.3ms，需在相同图
@@ -56,6 +56,24 @@ cargo run -p yss-application --example build_samples -- --check --stage target/d
 Tokio blocking pool 执行，指针事件不读取磁盘。
 
 ## 模块、状态与数据流
+
+下文保留集成场景的统一说明，模块路径按此表解析，不再位于本 crate 的 `src/` 下：
+
+| 当前 owner | 模块与状态 |
+| --- | --- |
+| [yss-workbench](../yss-workbench/src) | `workbench`、`projects`、`project`、私有 `services`、启动与窗口状态；Dock、导航、项目操作和独立窗口协调 |
+| [yss-ui](../yss-ui/src) | `text`/assets、Markdown/math、preferences、appearance、keymap、window_chrome、modal_window、layout_store、resources 和共用产品控件 |
+| [yss-desktop-services](../yss-desktop-services/src) | 无 GPUI 的 `ApplicationTasks`、`DesktopEvents`；复用已有 ApplicationState 和 Tokio handle |
+| [yss-graph-ui](../yss-graph-ui/src) | `canvas`、`opened_graph`、`details`、`graph_properties`、`parameters`、`node_creation`、`problems`、图结果目录 |
+| [yss-assistant-ui](../yss-assistant-ui/src) | `assistant` 面板及 `controller` 的会话强缓存、目录查询、重命名、删除和读取代次 |
+| [yss-data-ui](../yss-data-ui/src) | `databases`、`imports`；导入表单通过 `ImportSubmission` 事件请求宿主提交 |
+| [yss-results-ui](../yss-results-ui/src) | `results` 阅读器/报告/租约、`charts`、`plots` |
+| [yss-settings-ui](../yss-settings-ui/src) | `settings`，关闭窗口仍保留的 SettingsPanel |
+| [yss-resource-ui](../yss-resource-ui/src) | `documents`、`minds`、`file_commands` |
+| [yss-plugin-ui](../yss-plugin-ui/src) | `plugins` 管理和原生视图，复用原 PluginManager |
+
+功能 crate 不依赖 Workbench 具体类型。Workbench 保留功能实体与订阅，跨功能只路由类型化事件、命令和共享只读投影；
+完整 `NativeServices` 只在组合层使用，功能服务仅暴露所需能力。GPUI Kit 的版本和 grammar features 统一由根 workspace 声明。
 
 - `projects/form`：新建与另存为的未提交名称和目录输入；默认位置由原 registry owner 查询。
   提交复用原生命周期用例，部分写入失败保留已写入目标和恢复入口，不重复创建。
@@ -192,7 +210,7 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
   并释放已准备的控件；实际文件保存分别提交，部分失败仍安装已成功或已编辑的原回执。
   图保存与画布单图 Save 复用 `canvas/commands` 的输入捕获、worker 和回执接纳；准备完成即锁定画布，失焦不再并行提交同一草稿。
   整批准备中止时释放已准备画布及输入的提交标记；保存失败仍保留当前图与未完成输入，项目后续操作只在全部保存成功后继续。
-- [workbench/menus/catalog](src/workbench/menus/catalog.rs) 提供文件、编辑、数据、视图、窗口、工具、帮助七组菜单；
+- [workbench/menus/catalog](../yss-workbench/src/workbench/menus/catalog.rs) 提供文件、编辑、数据、视图、窗口、工具、帮助七组菜单；
   名称使用宿主 locale key，顺序与分隔由该目录统一定义；AppMenuBar 和 macOS 系统菜单消费同一份 GPUI Menu 定义。
   macOS 另保留平台应用菜单。Schema 查看器、调试器和性能分析器当前为禁用项。
 - `workbench/menus`：从当前编辑器能力、项目可用性和根 DockArea 派生菜单可用性及勾选项；缓存只是菜单投影，不拥有布局状态。
@@ -202,7 +220,7 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
 - `workbench/menus/layout`：分屏移动当前编辑器到右侧或下方，至少需要同组有两个标签；不复制图文档或编辑器实体。
   重置将已打开资源归回中心标签、目录归回左侧、属性归回右侧、工具面板归回底部，恢复默认尺寸并应用详情/底部面板的用户默认可见性，保留未保存输入和结果租约。
   所有重排调用同一个根 DockArea 的公开操作。
-- [workbench/menus/help](src/workbench/menus/help.rs) 拥有文档、发行说明、仓库和反馈入口；架构打开当前系统架构文档，关于对话框显示 Cargo 包版本。
+- [workbench/menus/help](../yss-workbench/src/workbench/menus/help.rs) 拥有文档、发行说明、仓库和反馈入口；架构打开当前系统架构文档，关于对话框显示 Cargo 包版本。
 - `plugins`：读取已有进程级 PluginManager 的登记、有效授权、存储、任务历史和有界 stderr 诊断。
   原生搜索和选中身份是视图暂态，列表名称与状态消费原 Activity 投影；详情读取前后核验捕获的安装身份。
   commands 在 worker 调用原启停、卸载及缓存/包回收入口，完成后重读真实登记；失败反馈保留到显式刷新或重新选择。
@@ -269,7 +287,7 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
 - `assistant`：每个明确 session 的原生会话面板、未提交输入、资源引用、运行选项与待发送队列。
   commands 调用原 Application 会话校验/模型选择和 HarnessHost 提交/取消；模型循环由原 owner 执行，
   点击发送清出的原文保留在待确认请求，失败时用持久 TurnStarted 重验是否已接纳，不自动重复发送。
-  当前草稿仅在本次工作台缓存中保留，跨重启保存仍属于会话生命周期的开放工作。
+  当前草稿仅在本次工作台保留的 AssistantController 会话缓存中存活，跨重启保存仍属于会话生命周期的开放工作。
 - `assistant/drafts`：统一捕获文本、引用、模型和运行选项。队列使用入队时的参数，不改变会话后续选择；
   前一轮成功且连续历史已确认后发送下一条，失败、取消或模型不可用时暂停，保留手动发送和逐条移除。
   未发送原文恢复时合并当前文本与引用，相同文本不重复追加，并通过原 Application 入口恢复模型与选项；
@@ -281,8 +299,8 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
   运行中 Enter 或入队按钮捕获新消息，停止按钮仍独立可用；输入框展开仅调整同一控件的行数，不创建另一份输入。
   行首或空白后的 `@` 打开原资源选择器并阻止字符插入；普通邮箱文本保留 `@`，关闭选择器回到原输入。
   用户消息使用带边框的编辑区底色，回复直接排版；复制使用图标，逐次模型调用显示 Token 用量并可展开详情，错误和运行活动直接显示。
-- `project/resources`：从工作台已接纳的 ProjectIndex 一次生成只读资源目录，包含六类资源的类型身份、名称、资源/函数签名版本、路径索引与搜索文本。
-  目录通过同一 Arc 分发给当前项目的缓存会话；索引刷新和会话挂载沿用工作台入口，对话不再独立查询项目索引。
+- `yss-ui::resources`：从工作台已接纳的 ProjectIndex 一次生成只读资源目录，包含六类资源的类型身份、名称、资源/函数签名版本、路径索引与搜索文本。
+  目录通过同一 Arc 交给 AssistantController，再分发给当前项目的缓存会话；对话不独立查询项目索引。
 - `assistant/references`：草稿、队列、未确认原文和历史消息共用引用标签；历史名称来自记录，其余显示当前目录名称。
   打开与移除是独立操作，已删除资源保留引用并显示不可用，草稿仍可移除。打开复用工作台原资源入口、并发打开保护和失败提示，事件路由重新核验会话项目。
   `references/picker` 复用 Popover 与虚拟 List，按名称/路径搜索，支持键盘与连续增删。弹出和搜索状态属于可见窗口；目录刷新保留查询，重新核对当前资源身份，隐藏会话释放控件状态。
@@ -349,27 +367,29 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
   `inspect/render` 在对话内展示本地化参数、失败明细、目标、资源/结果与时长；失败码在详情收起时仍可见，详情失败可原位重试。
   复用 Harness Contract 的 `AssistantToolInspection`，参数不复制原请求中的凭据、数据行、正文和内部版本；完整安全投影（含工具输出）只在展开技术详情或复制时序列化，支持分别复制参数和完整详情。
   目标只按当前资源目录中的唯一身份解析，打开复用原工作台入口；目录更新直接接纳，不猜测资源类型。来源片段仍由 `assistant/sources` 按需呈现。
-- `workbench/assistant`：独立读取 Rust Assistant Activity 文档并交给共用 ActivityPanel，新建/重命名/删除后重读原目录，
+- `yss-assistant-ui::controller`：独立读取 Rust Assistant Activity 文档，通过事件交给工作台的共用 ActivityPanel，新建/重命名/删除后重读原目录，
   不从操作回执拼接列表、不为目录订阅完整历史。首次打开立即显示待加载面板并完成面板显示的 UI intent；
   后台挂载保留原侧栏选择，异步读取完成只替换目录内容。原查询负责代次与刷新合并，失败由目录提供重试。
   窗口重新激活重读原目录；会话操作完成使操作前的读取代次失效，再查询当前目录，迟到结果不能恢复旧标题。
-  会话缓存只按 ID 查找和保留暂态输入，不持有布局拓扑；
+  控制器的强会话缓存只按 ID 查找和保留暂态输入，不持有布局拓扑；工作台只保留控制器实体；
   从目录激活当前可见会话会关闭该面板，草稿与订阅留在同一缓存；重开仍通过原 Application 校验并更新最近打开时间，再复用原面板。
   当前会话从根 DockArea 的活动面板读取，图选择和资源打开只更新项目/节点侧栏，不覆盖会话高亮；关闭不取消运行，项目替换释放旧缓存。
-  `assistant/navigation` 由底栏会话开关调用：关闭时从根 DockArea 移除全部会话面板，保留原缓存草稿并记录最后查看的会话 ID。
+  `workbench/assistant/navigation` 由底栏会话开关调用：关闭时从根 DockArea 移除全部会话面板，控制器保留缓存草稿并记录最后查看的会话 ID。
   重开先沿原查询获取新目录，优先恢复仍在目录中的上次会话，其次打开最近会话，仅空目录才新建；成功打开清除恢复提示。
   恢复提示不保存布局或目录，项目操作开始即清除提示和待打开请求，并使旧目录读取失效；失败保留原项目时重新启用目录查询。
   读取或打开失败显示原助手目录及重试入口；待打开请求和已有会话操作共用忙碌保护。无项目时底栏继续打开临时会话目录。
-  `assistant/renaming` 捕获会话 ID 与宿主生命周期，使用共享名称表单提交原 Application 重命名。运行中、失效会话与非法名称保留本地化失败和草稿，成功才更新缓存元信息并关闭。
-  目录右键提供“删除对话”，`assistant/deletion` 捕获会话与宿主 lifecycle，经原生危险确认后调用 Application 删除入口。
+  `controller/renaming` 捕获会话 ID 与请求代次，使用共享名称表单提交原 Application 重命名。运行中、失效会话与非法名称保留本地化失败和草稿，成功才更新缓存元信息并关闭。
+  目录右键提供“删除对话”，`controller/deletion` 捕获会话与请求代次，经原生危险确认后调用 Application 删除入口。
   运行中的 Turn 或未结束的 Workflow 拒绝删除；提交成功才从根 DockArea 移除该对话并释放缓存、草稿和事件订阅，其他会话与编辑器保留。
   删除成功使旧目录读取失效，并重读原目录；失败保留原面板与输入，通过原生通知反馈。
   点击会话在 sidebar 右侧、编辑区左侧的独立对话列展示；该列没有 tabs，左侧会话列表直接切换正文，打开会话不替换当前文件。
   目录高亮从根 DockArea 的活动会话投影，切换、关闭和恢复布局不会留下另一份会话选择状态；打开会话聚焦输入控件。
   此布局参考 [Zed 的 Threads Sidebar 与 Agent Panel](https://zed.dev/docs/ai/parallel-agents)，由现有根 DockArea 的水平分组实现。
   无项目时在独立模态窗口呈现同一个根 DockArea；布局恢复校验持久 session 的项目归属。
+  工作台对控制器的事件订阅和观察不随项目订阅集合清空；项目操作开始只使旧读取失效，成功接纳新项目身份才释放旧缓存，失败保留原输入。
+  布局恢复工厂只保留控制器弱引用；不克隆另一份强会话表，也不借恢复过程重新安排显示。
   缓存释放和跨重启草稿保存仍待完善，不能以当前基本界面代替这些生命周期验收。
-- `main`：命令行参数、执行器、原生资源、窗口及快捷键；执行器存活到窗口循环结束。
+- `main`：命令行参数、执行器、GPUI 初始化与最终窗口组装；功能初始化和快捷键由对应 crate 注册，执行器存活到窗口循环结束。
   图标统一来自 `gpui_kit::assets::IconName`，入口注册同模块的 `AllAssets`，使完整枚举与嵌入的 SVG 资源对应；
   渲染使用 `gpui_kit::component::Icon` 或组件图标接口。聊天、图表、保存、运行、停止、图、数据库和表格均使用库内图标。
   图标参数使用具体 `IconName`，不另建图标枚举、自有 SVG、路径映射或逐个追加的资源注册。
@@ -394,8 +414,8 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
 - `appearance`：通过 GPUI Kit 的完整浅色/深色主题和语义 token 统一各窗口；“跟随系统”保留窗口外观订阅。
   界面及文档字体/字号来自普通偏好，窗口创建不重置用户选择；画布与 Mind 的绘制和命中测试同步缩放，
   词云布局缓存包含字体和尺寸，图表、空状态与自绘颜色消费当前主题，而非固定深色常量。
-- `services`：接入 ApplicationServices，提供任务执行、Graph/Project/UI/Harness 事件交付及 FS sink。
-- `project`：持有后端的项目索引、Activity 文档和图编辑只读投影，不拥有另一份图文档。
+- `services`：工作台私有组合层接入 ApplicationServices、日志与偏好；`yss-desktop-services` 提供后台 Application 调用及统一 `DesktopEvent` 交付，功能 crate 不接收完整服务集合。
+- `project`：持有后端项目索引与 Activity 文档；图编辑只读投影由 `yss-graph-ui::OpenedGraph` 持有并只读访问，不拥有另一份图文档。
 - `workbench`：组合 Project/Nodes、编辑标签、Details、Problems、Output、Results 和 Logs。根 DockArea 是布局拓扑的唯一 owner；
   图实体的弱引用表只用于按资源查找，不保存面板位置、顺序或选中状态。
   工作台操作失败通过组件库原生通知一次性交付，不占用底部导航栏。
@@ -470,7 +490,7 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
   工作台重连清除加载标签上的旧意图及其节点目标，保留原标签和读取；同一标签可接纳新 binding 的请求。
   读取期间用户切走或展开其他分组，完成后仍在原位置安装画布，但不抢回选择、详情和焦点；该请求结算为 failed。
   分组内的活动标签若被另一展开分组遮住，其激活事件不改写当前图上下文。
-  打开已有图复用原实体；关闭图上的资源重命名不创建新标签。`graphs/resources` 同时接纳本地命令与 NativeEvent 的类型化回执，
+  打开已有图复用原实体；关闭图上的资源重命名不创建新标签。`graphs/resources` 同时接纳本地命令与 DesktopEvent 的类型化回执，
   从目标资源 delta 取得前后 revision，拒绝作用于较新画布的旧回执；仅明确删除回执移除面板和对应详情，不按索引缺失丢弃输入。
   重命名重绑同一画布的路径与布局，现有投影保留至读取成功；资源索引仍沿 Application 查询刷新。
   已有画布刷新通过 Application 按原编辑会话定位。通知缺失或乱序后，由工作台核验项目、实体与 DockArea，
@@ -478,6 +498,7 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
   后续保存仍需通过原并发校验。独立打开的目标画布不会被替换，原画布保持读取失败并保留输入。
 - `workbench/activity/drag`：节点与资源行共用原生拖拽，持有源面板弱引用、不可变文档和行索引；资源节点额外引用原节点目录及其行索引。
   落下时校验源文档、目录、项目与可用性；Event 图打开原资源，Function/Database 使用原资源绑定描述和目标画布坐标提交一次创建事务。
+  `yss-graph-ui::GraphDrag` 只接收源文档/目录与验证回调；回调持有源面板弱引用并重验 Arc 身份，不让图功能依赖 ActivityPanel 或 Workbench 类型。
   函数资源拖回自身时复用并聚焦原图，不创建递归调用；目录中的函数节点模板仍拒绝拖入自身。
   目录更新、源面板关闭、跨项目或忙碌目标不能创建节点。图版本在接收时捕获，Application 继续负责资源版本、历史和显式保存。
   `workbench/graphs` 从接收画布在根 DockArea 中的实际位置取得目标分组；首次打开移动原加载标签，异步读取沿原生命周期在同组替换。
@@ -485,7 +506,7 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
   `workbench/chrome` 在存在原生拖动时用 GPUI 的取消入口处理 Escape，松键不再交付；无拖动时保留原控件和画布的 Escape 行为。
 - `catalog_rows`：节点菜单与侧栏共用分类图标、节点图标、标题、类型提示和不可用标记；资源绑定项使用独立方法图标。
   展开、搜索、预览、拖动及创建动作仍归各宿主，显示组件不持有目录副本或业务状态。
-- `workbench/layout` 与 `services/layout_store`：保存组件库原生 DockAreaState，按项目恢复布局和资源；
+- `workbench/layout` 与 `yss-ui::layout_store`：保存组件库原生 DockAreaState，按项目恢复布局和资源；
   文件事务及写入排序在 worker 完成，不建立另一套布局模型。进程内结果标签不进入持久布局，也不恢复为“上次结果”占位；已打开报告的实体与租约仍归当前 DockArea。
   `layout_store/viewports` 按项目入口和图路径保留视角检查点，使用应用数据目录内独立的 `viewports-*.json`；
   打开项目时在 worker 一次读取，关闭标签保留检查点，重开直接读取内存。当前画布坐标仍只归 GraphCanvas。
@@ -531,58 +552,59 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
   资源目录仍通过发布与失效查询更新，不从操作回执拼接 Activity 条目。
   databases 提供数据库重命名、复制、删除和资源路径复制；菜单捕获实际目录快照，提交捕获原资源版本。
   重命名失败保留输入，删除先确认；复制从回执取得新 ID，删除关闭对应实际面板。图与数据库复用同一菜单动作枚举。
-- `workbench/graph_properties`：没有唯一有效选中节点时呈现函数签名和图常量，复用原始函数文档与图编辑事务。
+- `graph_properties`：没有唯一有效选中节点时呈现函数签名和图常量，复用原始函数文档与图编辑事务。
   元数据在 worker 中读取，按图实体、编辑版本与查询代次安装；常量完整值按需读取，内容指纹只用于
   保留未变化控件的输入，不代替提交前的版本校验。读取失败时禁用旧表单，刷新后重新读取。
   常量目录默认展开，按 50 项分页，只为访问过的页创建输入；按稳定 ID 线性复用未变化草稿，翻页、折叠和语言变化保留输入。
   类型菜单打开时才生成选项；函数参数与可选单返回类型沿用当前 FunctionSignature，表单和每条常量均有显式应用/恢复。
   结构化常量在原卡片内按需展开 JSON 编辑，与同一草稿一起应用或恢复；空值开关沿用原 Null 提交，不另建弹窗草稿。
   常量摘要保存数量等原始信息，渲染时翻译；输入解析失败和图提交失败直接显示在属性面板，失败不清空未提交输入。
-- `workbench/details`：协调当前图的选择、版本与属性表单；参数分组、条件字段及选项来自原编辑器投影。
+- `workbench/details` 只选择图、资源或日志展示目标，并保留同一个 GraphDetails 实体；资源分支委派给实际存活的编辑器。
+- `yss-graph-ui::details`：拥有当前图的选择、版本与属性表单；参数分组、条件字段及选项来自原编辑器投影。
   单个有效节点展示节点表单，空选区、多选或节点已从投影消失时回到同一图的属性；按实际节点可用性请求元数据。
-  渲染借用当前节点投影，名称等显示片段按需取得；资源分支只委派给实际存活的编辑器，没有目标时复用通用未选择提示。
+  渲染借用当前节点投影，名称等显示片段按需取得；没有目标时复用通用未选择提示。
   `parameters` 负责文本、数值、开关、选项、常量引用及分页数列；`relational` 负责有序列选择和类型化筛选，
   `domain` 负责编码/标签/正值映射，`ports` 负责标量字面量和端口实例操作。未变化字段保留暂态输入，
   字段事实变化时重新安装对应控件；投影或选择变化使旧菜单失效。常量引用选择与图常量表单共用
   `graph_properties` 的匹配版本查询，迟到查询不能安装到另一图或项目。
-  日志检查只覆盖当前 Details 展示，保留原编辑器绑定与未提交输入；日志实体由 LogsPanel 持有，Details 使用弱引用。
+  工作台的日志检查只覆盖当前 Details 展示，GraphDetails 保留原编辑器绑定与未提交输入；日志实体由 LogsPanel 持有，外层 Details 使用弱引用。
   显式图选择恢复图属性，后台图投影继续更新原表单而不抢占日志检查；资源切换和项目替换沿用原清理入口。
-- `workbench/details/node`：组合当前节点的名称、参数、诊断、描述统计、端口及文档；不复制完整节点模型。
+- `details/node`：组合当前节点的名称、参数、诊断、描述统计、端口及文档；不复制完整节点模型。
   选择安装借用同一不可变投影，端口草稿按地址查找并沿用原字段事实比较，避免逐项扫描和移除旧数组。
-- `workbench/details/diagnostics`：读取当前节点的原始诊断，复用 `text::graph_diagnostic` 格式化；按后端 severity 显示图标、颜色及标签。
+- `details/diagnostics`：读取当前节点的原始诊断，复用 `text::graph_diagnostic` 格式化；按后端 severity 显示图标、颜色及标签。
   位置显示节点、参数、端口或连线两端名称；参数行提示仍保留，诊断区默认展开且无诊断时隐藏。
   每页最多 50 条，跨页列表在有界区域滚动；同一节点投影或语言刷新保留展开和有效页码，切换节点重置。
   分页与折叠回调受选择代次约束；不再分析图或维护一份诊断事实。
-- `workbench/parameters`：节点属性与创建前配置共用参数草稿、分组布局和编辑控件；表单只发出键/值意图，
+- `parameters`：节点属性与创建前配置共用参数草稿、分组布局和编辑控件；表单只发出键/值意图，
   Details 提交原图参数事务，创建视图调用原只读表单查询。宿主动态检查目标与忙碌状态，表单代次拒绝旧菜单和旧控件。
   同值投影与语言变化复用输入；本地编辑标记使创建可以接纳尚未应用的输入，同时保留未修改默认值的隐式语义。
-- `workbench/parameters/field`：复用稳定 ParameterKey 的草稿与原 Input 事件；单行和列表 Enter 调用同一应用入口，
+- `parameters/field`：复用稳定 ParameterKey 的草稿与原 Input 事件；单行和列表 Enter 调用同一应用入口，
   失焦不隐式提交，多行换行保留为输入。Escape 或恢复按钮放弃当前字段草稿，默认值按钮先放弃输入再提交原重置事务。
   忙碌或失效控件不提交，重复相同非 Null 值不创建请求；解析失败保留输入，继续编辑清除本地错误。
   `field/choices` 按打开时生成选项并使用原翻译键；常量名称借用 GraphProperties，读取期间禁用选择。
   `field/list` 每页 50 行，按访问页创建输入；排序、分页及增删保留同一草稿，应用时完整解析，整数不经过 f64。
   `field/render` 按当前节点与参数键展示原诊断，复用 Problems 文案格式化；不在视图重做图分析。
   关系选列/筛选与语义域继续委派原独立草稿；资源/其他结构值保留已有文本/JSON 编辑方式，最终校验归后端。
-- `workbench/parameters/domain`：编码/标签映射使用同一份有序草稿，每页 50 行且滚动区域有界；
+- `parameters/domain`：编码/标签映射使用同一份有序草稿，每页 50 行且滚动区域有界；
   `domain/draft` 只为访问过的页创建成对输入，翻页、排序和语言变化保留输入；新增/删除修正页码。
   重复编码提示只在编码或行集合变化后重新计算；标签修改和无关重绘复用结果。提交仍使用 `ConversionDomain` 的唯一性、数量、字节和正值成员校验。
   正值随选中行的编码变化和排序移动，删除该行后清空；`domain/positive` 打开菜单时才读取选项，标签优先、编码次之、空编码显示 `∅`。
   两行映射显示正值选择；其他行数保留已有正值的编辑/清除入口，不在调整行数时隐式删除有效映射。
   编码和标签 Enter、字段 Escape/恢复、默认值与失败提示沿用原参数入口，失焦不提交；不保留另一个域值副本或单独的提交服务。
-- `workbench/parameters/relational`：列选择只保留有序名称或手动列表中的一份草稿；已知结构每页最多 50 项，
+- `parameters/relational`：列选择只保留有序名称或手动列表中的一份草稿；已知结构每页最多 50 项，
   显示类型、选择顺序及失效名称，缺失列保留到用户显式移除。未知结构复用 `field/list` 的分页、排序和输入事件。
   清空列选择时遵循投影的 `allow_empty`：允许为空提交空数组，必填选择提交原 Null 重置；名称原文及最终校验归后端。
   `relational/predicate/draft` 持有类型化筛选输入，直接消费当前列下发的运算符与值类型；宽整数和十进制保留精确值。
   `predicate/choices` 打开时才生成选项，选择前核验当前列及字段代次；显示语言不作为选项身份，重复选同一类型保留输入。
   列变化只调整不再允许的运算符/值类型；空值运算不提交比较值。筛选和手动列名 Enter 复用原应用入口，
   显式应用、Escape 恢复、默认值和字段诊断沿用 `parameters`，不在失焦或菜单选择时隐式提交。
-- `workbench/details/connections`：从当前选择的图投影安装端口连接行，逐条断开按 ConnectionId 提交，超过 50 条分页。
+- `details/connections`：从当前选择的图投影安装端口连接行，逐条断开按 ConnectionId 提交，超过 50 条分页。
   `connections/picker` 复用原生 List 的搜索、键盘选择与虚拟列表；打开时才从 Application 查询当前端口的候选，
   只呈现后端允许的 append/replace，并提示替换。候选及其标签来自同一语义快照，不在视图推断类型或容量。
   选择器只保留临时搜索与候选；图版本、投影身份、选择代次和当前控件共同拒绝迟到回复与旧操作。
   `ports/list` 按输入、输出分组，默认折叠，展开后构建内容；更换节点重置分组，原生列表打开后聚焦搜索输入。
   端口字面量、实例增删/顺序、连接和撤销仍通过原图编辑入口；提交失败在节点表单显示，失败保留输入。
-- `workbench/details/documentation`：通过 Application 按类型读取本地化节点帮助，在节点参数与端口之后呈现默认展开的“文档”折叠区，
+- `details/documentation`：通过 Application 按类型读取本地化节点帮助，在节点参数与端口之后呈现默认展开的“文档”折叠区，
   复用原生 `TextView` 展示可选择的 Markdown，窄面板中的表格横向滚动，公式使用共享 `markdown` 扩展。
   不生成或扫描整份节点目录；只保留当前项目、类型与语言的读取投影，项目/类型变化取消旧交付并重新展开。
   `documentation/render` 仅在展开时构造正文视图；语言变化与重试保留折叠状态，旧语言交付拒绝安装。
@@ -599,7 +621,7 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
   原生队列只持有当前正在处理的请求 ID，重连或项目替换时清除；仅该请求的完成回调可以结算并推进队列。
   Doc/Mind/Chart/Database 的异步打开在清除原读取标记后核对请求身份，失效请求不安装编辑器、抢焦点或呈现错误。
   图与结果面板的读取继续归原实体，旧 binding 的完成或关闭通知不能释放新请求的队列。
-- `workbench/details/description`：描述统计节点使用默认收起的结果区，首次展开读取原 Application 结果投影，
+- `details/description`：描述统计节点使用默认收起的结果区，首次展开读取原 Application 结果投影，
   `results/description` 在 worker 校验并交付列摘要；不持有历史租约或创建另一份结果缓存。
   订阅绑定画布的投影/执行通知，只接纳当前有效输出；上游编辑、重新执行、节点切换与清理立即移除旧内容，迟到回执不能安装。
   相同结果的后台刷新和语言切换不重读；列摘要默认收起，每页最多 50 列，多页目录有界滚动且翻页回到目录顶部。
@@ -722,7 +744,7 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
   兼容查询仅提交图身份、编辑版本和来源端口，Application 从 Project 共享内存文档读取；菜单不再读取、复制并回传整张图。
   语言变化保留查询及配置草稿，目录更新重新筛选当前描述。项目或图版本变化阻止旧菜单提交。
   默认快速创建；勾选“创建前配置”复用 `node_creation`，返回保留查询与开关。快速/配置创建共用原图事务，成功关闭菜单并恢复画布焦点，失败保留输入。
-- `workbench/node_creation`：复用 Application 的 `node_creation_form` 与共享参数表单；只保存当前未提交值、端口数量和读取代次。
+- `node_creation`：复用 Application 的 `node_creation_form` 与共享参数表单；只保存当前未提交值、端口数量和读取代次。
   条件字段与默认值归后端，预览不创建图节点或历史。固定端口只读，派生端口标为自动；成员组仅显示一项数量并提交全部成员。
   `query` 串行校验当前修改，创建前接纳未应用输入并再次校验；`ports` 保留独立数量输入和范围错误，`render` 负责有界滚动与返回/重试/创建。
   语言切换沿用正在校验的值并保留草稿，标题随同一节点目录更新；项目/图版本变化阻止旧表单提交，迟到读取不能恢复已关闭表单。
@@ -740,10 +762,10 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
 - `canvas/execution`：捕获与当前编辑投影匹配的后端文档，将同一不可变 `Arc` 直接交给 RunGraphRequest；公共图活动拥有运行事实，
   命令拒绝仅为本地反馈。原生运行读投影按执行会话与 RunId 安装，恢复期间有界暂存通知后重放。
   单节点可选择当前输入或补算依赖，取消复用完整运行身份；退出时请求取消仍在运行的计算。
-- `workbench/problems`：只持有当前活动图的 canonical diagnostics 投影；固定标题栏显示总数，区分未打开图与没有问题。
+- `yss-graph-ui::problems`：只持有当前活动图的 canonical diagnostics 投影；固定标题栏显示总数，区分未打开图与没有问题。
   变高虚拟列表只构造可见行，按后端 severity 呈现图标/颜色，blocking 独立显示；展示代码、消息、位置及关联跳转，不提供手动清空。
   同一投影的选择通知不重建列表；投影或语言替换使行高缓存失效，图切换重置滚动。
-  `problems/location` 与 Details 复用节点、参数、端口和连线名称；`problems/navigation` 核验原投影与当前可见编辑器，拒绝过期点击和迟到定位。
+  `problems/location` 与 Details 复用节点、参数、端口和连线名称；`workbench/problem_navigation` 接收 LocateProblem，核验原投影与当前可见编辑器，拒绝过期点击和迟到定位。
   定位等 Dock 展开后的布局绘制，再由 `canvas/navigation` 调整视口与暂态选择：图适应全部节点，端口聚焦对应行，连线高亮并显示两端，Delete 通过原图事务断开。
   参数定位显示 Details，`parameters/reveal` 按字段身份滚动并聚焦现有控件；表单代次与新用户焦点取消迟到请求，不重建输入或提交草稿。
   已知资源复用 `resources/navigation` 的正常打开路径，该入口也供 Assistant 引用使用；缺失资源仍显示身份，不猜测路径或创建资源。
@@ -757,7 +779,7 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
   启动前拒绝沿用 Canvas 本地反馈；原生 RunFailure 没有 IPC 诊断编号，不补造字段。
   执行事件只在结果版本领先当前图投影时请求刷新，恢复相同快照不会形成图刷新与执行恢复循环。
   切换到其他资源或结果标签清除图上下文，Logs、Problems 与 Output 保留各自数据入口。
-- `workbench/results`：从当前图的 GraphResultState 和运行投影派生当前有效结果目录，不展示失效或等待同步的输出；
+- `yss-graph-ui::results` 从当前图的 GraphResultState 和运行投影派生当前有效结果目录，不展示失效或等待同步的输出；`workbench/results` 负责打开与跨面板路由。
   按完整结果引用打开原生结果标签，并支持现有 OpenResult UI intent。
 - `workbench/results/window`：结果标签工具栏可在独立原生窗口打开相同结果；窗口复用 ResultPanel、Root 与 window_chrome，
   分页、报告、图形与失败重试仍走原读取。每个窗口创建自己的控件、输入和展示状态，不跨窗口共享带焦点的实体。
@@ -850,7 +872,7 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
 - `keymap` / `settings/keybindings`：保留组件与应用的默认键表，按 action/context 完整替换命令绑定；
   删除禁用原默认键，重置移除覆盖；校验语法、重复与同上下文冲突/前缀冲突，错误不发布部分键表。
   输入框的原生文本快捷键仍归组件，菜单加速键跟随实际绑定更新。
-- `services/layout_store`：继续单独保存工作台布局与视口，关闭布局恢复时既不加载也不覆盖已有快照。
+- `yss-ui::layout_store`：继续单独保存工作台布局与视口，关闭布局恢复时既不加载也不覆盖已有快照。
   `workbench-layouts/last-project.json` 仅记录成功打开/创建/另存为的项目路径，启动恢复不依赖最近列表的发现时间；
   显式关闭不会在本次会话自动重开，丢失路径仍保留可操作工作台并报告失败。
 - `yss-logging`：日志默认显示级别不改变采集级别；保留天数和 SQLite 活跃页存储目标由原日志运行时分批执行，
@@ -939,18 +961,22 @@ GPUI 是当前唯一构建入口；`react/` 仅保留参考源码。已确认的
 2026-10-07 用户确认项目副本中 Diamonds 的原生显示、单元格预览、滚动、分页、复制和列设置浏览正常；
 列设置的实际提交、保存、退出、导出和恢复仍需单独验收。
 
+2026-10-11 crate 重构在隔离应用目录与新建项目中完成 Linux/X11 原生窗口 smoke：图常量 42 的保存与执行、结果标签转独立窗口后关闭来源标签仍显示 42、Iris 示例导入及 150 行末页、
+Assistant 关闭/重开保留草稿、另存为 `/proc` 的真实失败反馈与随后成功切换项目、Markdown 保存/预览、Iris 直方图预览/保存、Mind 主题修改/保存、插件空目录、
+语言切换即时发布及退出重启后的语言和四个资源标签恢复。已读取实际资源文件确认保存，重启进程正常退出。
+这些操作不覆盖真实模型流式响应、签名插件执行、并发迟到写入、完整连接手势、物理 IME 或 Windows/macOS；上述完整功能验收不因拆包而自动关闭。
+
 真实项目验收使用副本：项目激活沿用目录初始化与数据库维护，编辑通过 Project 修改内存状态，
 只有显式保存或现有助手事务写图正文。原项目路径 `/home/zy/New YssBI Project/` 不作为迁移编辑验收目标。
 
 ```sh
-cargo check -p yss-desktop-gpui --bin yss-desktop-gpui
-cargo clippy -p yss-desktop-gpui --bin yss-desktop-gpui
-cargo fmt -p yss-desktop-gpui -- --check
-cargo run -p yss-desktop-gpui --example check_math_docs
+cargo check -p yss-desktop-gpui --all-targets
+cargo clippy -p yss-workbench -p yss-graph-ui --all-targets --no-deps -- -D warnings
+cargo test -p yss-ui -p yss-data-ui -p yss-resource-ui --lib
+cargo fmt -p yss-desktop-gpui -p yss-workbench -p yss-graph-ui -- --check
 ```
 
-`check_math_docs` 只读检查中英文节点文档中真实公式的排版、SVG 解码和可见像素，不打开窗口或项目；
-它不替代公式的界面人工验收。
+静态与格式检查应按实际修改增加其余功能 crate，不能只检查薄入口。公式界面仍需要原生人工验收。
 
 Fedora 需要 C/C++ 工具链以及 fontconfig、libxkbcommon、Wayland/X11、OpenSSL 开发库；
 本机链接还需 `libxkbcommon-x11-devel`。需要可用图形驱动。Windows/macOS 的输入、平台路径、
@@ -1211,7 +1237,7 @@ Fedora 先前两组菜单的顶栏布局、悬停切换、方向键/Escape、资
 分别检查 1000px、760px 与 600px 设置窗口的搜索、无结果清空、分类、固定面包屑、字段换行、独立滚动和逐项重置；
 供应商编辑离开页面时仍确认放弃，重复点击 AI 分类保留当前子页和草稿。这些项目仍待人工验收，编译和静态检查不代表通过。
 
-偏好扩展的自动验证：`cargo test -p yss-settings -p yss-logging -p yss-desktop-gpui` 覆盖 50 项测试，
+偏好扩展的原自动验证包含 50 项测试；其中桌面测试已迁入 `yss-ui`、`yss-data-ui` 和 `yss-resource-ui`，其余仍由 `yss-settings`、`yss-logging` 拥有，
 包括原子保存失败/并发更新、自动保存调度与失败状态、快捷键替换/禁用/冲突、分页边界及日志保留与读取事务。
 隔离目录中的实际 GPUI 程序通过临时事件驱动验证浅色主题、字号 14 → 18 → 默认值、每页行数写入 25、
 文档延迟自动保存及重启后恢复上次项目/文档；配置工作台 `ctrl-alt-j` 后，原 `ctrl-,` 不再打开设置，新键可打开窗口。

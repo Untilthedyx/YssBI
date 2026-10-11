@@ -8,6 +8,20 @@ version = "0.4.0"
 edition = "2024"
 
 [workspace.dependencies]
+gpui-kit = { version = "=0.7.1", features = [
+  "tree-sitter-bash",
+  "tree-sitter-css",
+  "tree-sitter-html",
+  "tree-sitter-javascript",
+  "tree-sitter-markdown",
+  "tree-sitter-python",
+  "tree-sitter-rust",
+  "tree-sitter-sql",
+  "tree-sitter-toml",
+  "tree-sitter-tsx",
+  "tree-sitter-typescript",
+  "tree-sitter-yaml",
+] }
 dunce = "1.0.5"
 atomicwrites = { version = "=0.4.4", default-features = false }
 libc = "0.2"
@@ -68,6 +82,33 @@ windows-sys = { version = "0.61.2", features = [
 
 # Keep interactive rendering usable in `cargo run` without optimizing business crates.
 [profile.dev.package.yss-desktop-gpui]
+opt-level = 1
+
+[profile.dev.package.yss-workbench]
+opt-level = 1
+
+[profile.dev.package.yss-ui]
+opt-level = 1
+
+[profile.dev.package.yss-graph-ui]
+opt-level = 1
+
+[profile.dev.package.yss-assistant-ui]
+opt-level = 1
+
+[profile.dev.package.yss-data-ui]
+opt-level = 1
+
+[profile.dev.package.yss-results-ui]
+opt-level = 1
+
+[profile.dev.package.yss-settings-ui]
+opt-level = 1
+
+[profile.dev.package.yss-resource-ui]
+opt-level = 1
+
+[profile.dev.package.yss-plugin-ui]
 opt-level = 1
 
 [profile.dev.package.gpui-pre]

@@ -1,0 +1,26 @@
+[package]
+name = "yss-results-ui"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+path = "src/results_ui.rs"
+
+[dependencies]
+anyhow = "1"
+chrono.workspace = true
+gpui-kit.workspace = true
+serde_json.workspace = true
+yss-application = { path = "../yss-application" }
+yss-chart-document = { path = "../yss-chart-document" }
+yss-data-contract = { path = "../yss-data-contract" }
+yss-database-contract = { path = "../yss-database-contract" }
+yss-database-schema = { path = "../yss-database-schema" }
+yss-dataset-profile = { path = "../yss-dataset-profile" }
+yss-desktop-services = { path = "../yss-desktop-services" }
+yss-graph-execution = { path = "../yss-graph-execution" }
+yss-node-kernel = { path = "../yss-node-kernel" }
+yss-project = { path = "../yss-project" }
+yss-project-identity = { path = "../yss-project-identity" }
+yss-ui = { path = "../yss-ui" }

@@ -1,0 +1,31 @@
+[package]
+name = "yss-graph-ui"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+path = "src/graph_ui.rs"
+
+[dependencies]
+anyhow = "1"
+gpui-kit.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+yss-application = { path = "../yss-application" }
+yss-canonical-hash = { path = "../yss-canonical-hash" }
+yss-data-contract = { path = "../yss-data-contract" }
+yss-desktop-services = { path = "../yss-desktop-services" }
+yss-graph-analysis-contract = { path = "../yss-graph-analysis-contract" }
+yss-graph-document = { path = "../yss-graph-document" }
+yss-graph-editor = { path = "../yss-graph-editor" }
+yss-graph-execution = { path = "../yss-graph-execution" }
+yss-node-catalog = { path = "../yss-node-catalog" }
+yss-node-protocol = { path = "../yss-node-protocol" }
+yss-project = { path = "../yss-project" }
+yss-project-history = { path = "../yss-project-history" }
+yss-project-identity = { path = "../yss-project-identity" }
+yss-results-ui = { path = "../yss-results-ui" }
+yss-ui = { path = "../yss-ui" }

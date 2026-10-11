@@ -70,12 +70,6 @@
         "target": null
       },
       {
-        "name": "yss-display-naming",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
         "name": "yss-filesystem",
         "kind": "normal",
         "optional": false,
@@ -276,6 +270,60 @@
     ]
   },
   {
+    "name": "yss-assistant-ui",
+    "manifest": "crates/yss-assistant-ui/Cargo.toml",
+    "dependencies": [
+      {
+        "name": "yss-application",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-desktop-services",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-graph-execution",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-harness-contract",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-harness-core",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project-identity",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-settings",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-ui",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      }
+    ]
+  },
+  {
     "name": "yss-canonical-hash",
     "manifest": "crates/yss-canonical-hash/Cargo.toml",
     "dependencies": []
@@ -302,6 +350,54 @@
     "name": "yss-data-contract",
     "manifest": "crates/yss-data-contract/Cargo.toml",
     "dependencies": []
+  },
+  {
+    "name": "yss-data-ui",
+    "manifest": "crates/yss-data-ui/Cargo.toml",
+    "dependencies": [
+      {
+        "name": "yss-application",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-data-contract",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-database-contract",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-database-schema",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-desktop-services",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project-identity",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-ui",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      }
+    ]
   },
   {
     "name": "yss-database-arrow",
@@ -528,79 +624,25 @@
     "manifest": "crates/yss-desktop-gpui/Cargo.toml",
     "dependencies": [
       {
+        "name": "yss-ui",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-workbench",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      }
+    ]
+  },
+  {
+    "name": "yss-desktop-services",
+    "manifest": "crates/yss-desktop-services/Cargo.toml",
+    "dependencies": [
+      {
         "name": "yss-application",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-canonical-hash",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-chart-document",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-data-contract",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-database-contract",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-database-schema",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-dataset-profile",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-filesystem",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-graph-analysis-contract",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-graph-diagnostics",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-graph-document",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-graph-editor",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-graph-execution",
         "kind": "normal",
         "optional": false,
         "target": null
@@ -612,67 +654,7 @@
         "target": null
       },
       {
-        "name": "yss-harness-core",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-logging",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-node-catalog",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-node-kernel",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-node-protocol",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-plugin-runtime",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-project-history",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
         "name": "yss-project-identity",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-project-model",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-project-registry-contract",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-project-registry",
         "kind": "normal",
         "optional": false,
         "target": null
@@ -690,11 +672,6 @@
         "target": null
       }
     ]
-  },
-  {
-    "name": "yss-display-naming",
-    "manifest": "crates/yss-display-naming/Cargo.toml",
-    "dependencies": []
   },
   {
     "name": "yss-filesystem",
@@ -815,6 +792,12 @@
     "dependencies": [
       {
         "name": "yss-graph-analysis-contract",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-i18n",
         "kind": "normal",
         "optional": false,
         "target": null
@@ -1128,6 +1111,102 @@
     ]
   },
   {
+    "name": "yss-graph-ui",
+    "manifest": "crates/yss-graph-ui/Cargo.toml",
+    "dependencies": [
+      {
+        "name": "yss-application",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-canonical-hash",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-data-contract",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-desktop-services",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-graph-analysis-contract",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-graph-document",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-graph-editor",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-graph-execution",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-node-catalog",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-node-protocol",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project-history",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project-identity",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-results-ui",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-ui",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      }
+    ]
+  },
+  {
     "name": "yss-harness-contract",
     "manifest": "crates/yss-harness-contract/Cargo.toml",
     "dependencies": [
@@ -1218,6 +1297,11 @@
     ]
   },
   {
+    "name": "yss-i18n",
+    "manifest": "crates/yss-i18n/Cargo.toml",
+    "dependencies": []
+  },
+  {
     "name": "yss-logging",
     "manifest": "crates/yss-logging/Cargo.toml",
     "dependencies": []
@@ -1233,6 +1317,12 @@
     "dependencies": [
       {
         "name": "yss-data-contract",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-i18n",
         "kind": "normal",
         "optional": false,
         "target": null
@@ -1371,6 +1461,30 @@
     ]
   },
   {
+    "name": "yss-plugin-ui",
+    "manifest": "crates/yss-plugin-ui/Cargo.toml",
+    "dependencies": [
+      {
+        "name": "yss-application",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-plugin-runtime",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-ui",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      }
+    ]
+  },
+  {
     "name": "yss-project",
     "manifest": "crates/yss-project/Cargo.toml",
     "dependencies": [
@@ -1460,12 +1574,6 @@
       },
       {
         "name": "yss-project-model",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      },
-      {
-        "name": "yss-project-operation",
         "kind": "normal",
         "optional": false,
         "target": null
@@ -1572,18 +1680,6 @@
       },
       {
         "name": "yss-resource-naming",
-        "kind": "normal",
-        "optional": false,
-        "target": null
-      }
-    ]
-  },
-  {
-    "name": "yss-project-operation",
-    "manifest": "crates/yss-project-operation/Cargo.toml",
-    "dependencies": [
-      {
-        "name": "yss-project-identity",
         "kind": "normal",
         "optional": false,
         "target": null
@@ -1715,6 +1811,132 @@
     "dependencies": []
   },
   {
+    "name": "yss-resource-ui",
+    "manifest": "crates/yss-resource-ui/Cargo.toml",
+    "dependencies": [
+      {
+        "name": "yss-application",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-desktop-services",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project-identity",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project-model",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-settings",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-ui",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      }
+    ]
+  },
+  {
+    "name": "yss-results-ui",
+    "manifest": "crates/yss-results-ui/Cargo.toml",
+    "dependencies": [
+      {
+        "name": "yss-application",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-chart-document",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-data-contract",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-database-contract",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-database-schema",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-dataset-profile",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-desktop-services",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-graph-execution",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-node-kernel",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project-identity",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-ui",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      }
+    ]
+  },
+  {
     "name": "yss-sci",
     "manifest": "crates/yss-sci/Cargo.toml",
     "dependencies": [
@@ -1767,11 +1989,353 @@
     ]
   },
   {
+    "name": "yss-settings",
+    "manifest": "crates/yss-settings/Cargo.toml",
+    "dependencies": [
+      {
+        "name": "yss-filesystem",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      }
+    ]
+  },
+  {
+    "name": "yss-settings-ui",
+    "manifest": "crates/yss-settings-ui/Cargo.toml",
+    "dependencies": [
+      {
+        "name": "yss-application",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-desktop-services",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-harness-contract",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-logging",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project-identity",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project-model",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-settings",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-ui",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      }
+    ]
+  },
+  {
+    "name": "yss-ui",
+    "manifest": "crates/yss-ui/Cargo.toml",
+    "dependencies": [
+      {
+        "name": "yss-application",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-canonical-hash",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-data-contract",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-filesystem",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-graph-diagnostics",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-graph-editor",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-graph-execution",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-harness-contract",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-i18n",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-node-catalog",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-node-protocol",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project-identity",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-settings",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      }
+    ]
+  },
+  {
     "name": "yss-ui-contract",
     "manifest": "crates/yss-ui-contract/Cargo.toml",
     "dependencies": [
       {
         "name": "yss-project-identity",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      }
+    ]
+  },
+  {
+    "name": "yss-workbench",
+    "manifest": "crates/yss-workbench/Cargo.toml",
+    "dependencies": [
+      {
+        "name": "yss-application",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-assistant-ui",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-chart-document",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-data-ui",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-desktop-services",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-filesystem",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-graph-analysis-contract",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-graph-document",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-graph-editor",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-graph-execution",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-graph-ui",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-harness-contract",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-logging",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-node-catalog",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-node-protocol",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-plugin-runtime",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-plugin-ui",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project-history",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project-identity",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project-model",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project-registry-contract",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project-registry",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-project",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-resource-ui",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-results-ui",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-settings-ui",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-settings",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-ui-contract",
+        "kind": "normal",
+        "optional": false,
+        "target": null
+      },
+      {
+        "name": "yss-ui",
         "kind": "normal",
         "optional": false,
         "target": null

@@ -8,7 +8,6 @@ use yss_database_contract::{
 use yss_database_io::list_excel_sheets as list_workbook_sheets;
 use yss_database_schema::DatabaseColumnFact;
 use yss_database_source::list_tables as list_sql_source_tables;
-use yss_display_naming::allocate_unique_display_name;
 use yss_project_identity::{OperationId, ProjectInstanceId, ResourceRevision};
 
 use super::export::export_database_in_captured_session;
@@ -18,6 +17,7 @@ use super::{
     DatabaseApplicationOperation, DatabaseMutationResult, DatabaseOperationError,
     DatabaseUseCaseError,
 };
+use crate::display_naming::allocate_unique_display_name;
 use crate::session::{ApplicationSession, ApplicationState};
 use arrow::record_batch::RecordBatchReader;
 use yss_database_store::DatasetStore;

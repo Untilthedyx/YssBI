@@ -17,7 +17,7 @@ pub struct ProjectState {
     pub(crate) mutation_publication: Arc<Mutex<MutationPublication>>,
     pub(crate) filesystem: FilesystemCoordinator,
     pub(crate) resource_lifecycle: ResourceLifecycleRegistry,
-    pub(crate) resource_operations: Arc<Mutex<yss_project_operation::ProjectOperationLedger>>,
+    pub(crate) resource_operations: Arc<Mutex<crate::project_operation::ProjectOperationLedger>>,
     pub(crate) recovery_marker: yss_filesystem::RecoveryMarker,
     pub(crate) activation_generation: Arc<std::sync::atomic::AtomicU64>,
     pub(crate) activation_identity: Arc<RwLock<ProjectAuthorityExpectation>>,
@@ -67,7 +67,7 @@ impl ProjectState {
             filesystem,
             resource_lifecycle: ResourceLifecycleRegistry::default(),
             resource_operations: Arc::new(Mutex::new(
-                yss_project_operation::ProjectOperationLedger::new(
+                crate::project_operation::ProjectOperationLedger::new(
                     activation_identity.project_instance_id.clone(),
                     activation_identity.project_session_id.clone(),
                 ),

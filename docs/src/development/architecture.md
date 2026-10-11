@@ -4,15 +4,27 @@ Use this guide to find the owner of a change before modifying the desktop, appli
 
 ## Dependency direction
 
-```text
-GPUI desktop
-  -> Application services and typed use cases
-      -> Project, Graph, Database, Execution and Harness
-          -> domain contracts and infrastructure ports
-  -> Logging
-```
+The binary composes Workbench; Workbench depends on feature UI crates, never the reverse. Features call typed Application use cases and consume domain projections. Shared desktop scheduling and event delivery live below the views, without GPUI.
 
-The desktop owns window composition, worker scheduling and presentation. Blocking business work runs off the UI interaction path. Domain and Application code do not depend on GPUI, desktop services or concrete business adapters.
+| Crate                  | Responsibility                                                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `yss-desktop-gpui`     | Arguments, the process Tokio runtime, GPUI initialization and final window composition                                                     |
+| `yss-workbench`        | Startup, project navigation, root DockArea, panel registration, layout restoration and cross-feature routing                               |
+| `yss-ui`               | Shared product presentation, localization, Markdown/math, preferences, keymap, window chrome, readonly resource catalog and layout storage |
+| `yss-desktop-services` | `ApplicationTasks` over the existing Application state/runtime handle, and the shared `DesktopEvents` bus                                  |
+| `yss-graph-ui`         | GraphCanvas, readonly OpenedGraph, retained GraphDetails, graph forms, diagnostics and graph result catalog                                |
+| `yss-assistant-ui`     | Retained AssistantController, conversation panels, directory/cache ownership and Assistant UI workflows                                    |
+| `yss-data-ui`          | Dataset browser/editor and import forms                                                                                                    |
+| `yss-results-ui`       | Leased result readers, reports, chart editor and plots; Workbench coordinates independent result windows                                   |
+| `yss-settings-ui`      | Retained SettingsPanel, model/knowledge settings and preference editing                                                                    |
+| `yss-resource-ui`      | Markdown documents, mind maps and their captured-version save requests                                                                     |
+| `yss-plugin-ui`        | Plugin management and native plugin views over the canonical PluginManager                                                                 |
+
+All GUI crates inherit the same workspace `gpui-kit` dependency. They do not introduce Zed's UI, theme, workspace or GPUI dependency chain. Domain, Application and `yss-desktop-services` remain GPUI-free.
+
+`NativeServices` is private to Workbench's composition layer. Features receive narrow handles for their actual capabilities, not that aggregate. `ApplicationTasks` reuses the process Tokio handle for blocking use cases; it does not start a second runtime or own models, plugins, preferences and logging. Typed events and callbacks carry cross-feature requests, including import submission and resource/result navigation.
+
+`yss-application::runtime` remains the concrete adapter composition root. There is no separate bootstrap crate without a second host or other demonstrated isolation need. Project's operation admission/replay ledger is now its private `project_operation` module; Application's display-name allocator is its private `display_naming` module. Shared identity, layout, schema and scientific contracts remain separate crates.
 
 Generic filesystem primitives are a foundation for Project and Application. `yss-filesystem` owns file access, transactions, change facts and watcher sessions, with no dependency on other repository crates. Project path conventions, document validation and business failures remain with Project and its adapters.
 
@@ -38,6 +50,16 @@ Do not create a second graph draft, undo stack or saved-content identity in the 
 Compatible-node queries pass graph identity, editing version and source port, not a caller-owned graph document. Application reads the shared resident document and checks its version before and after computation. Worker tasks and concurrent edits still require these checks even without IPC.
 
 Project instances, resource paths, graph sessions, nodes, ports, runs, results and panels have different identities. A late read or callback cannot install data into a different project, graph or view. Graph constants belong to their graph document, not to a separate global resource store.
+
+## Retained desktop state
+
+Workbench retains feature entities and coordinates their placement; it does not own their internal editing workflows. `GraphDetails` retains graph-specific forms. Settings drafts remain in the same `SettingsPanel` when its independent window closes. Import forms emit `ImportSubmission`; they do not retain or depend on a concrete Workbench.
+
+`AssistantController` owns the strong conversation cache, directory projection, refresh generations and conversation mutations. Each cached `ConversationPanel` owns its transient input. Hiding the conversation column removes panels from DockArea but preserves the cache and subscriptions. Beginning a project transition invalidates pending delivery; only an accepted project identity change resets the old cache. A failed activation does not discard its drafts.
+
+Workbench's controller subscription and observation survive replacement of project-bound subscriptions. Layout factories hold a weak controller handle rather than a second strong cache. DockArea remains the only topology owner; the controller never keeps an alternate selected panel or group tree.
+
+Read generations, project identities and resource versions still reject stale delivery. Dropping a view task does not imply that an already-started blocking write was cancelled; save receipts continue to be accepted through the original owners.
 
 ## Editing, saving and execution
 

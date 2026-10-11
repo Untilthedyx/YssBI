@@ -1,0 +1,20 @@
+[package]
+name = "yss-resource-ui"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+path = "src/resource_ui.rs"
+
+[dependencies]
+gpui-kit.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+yss-application = { path = "../yss-application" }
+yss-desktop-services = { path = "../yss-desktop-services" }
+yss-project = { path = "../yss-project" }
+yss-project-identity = { path = "../yss-project-identity" }
+yss-project-model = { path = "../yss-project-model" }
+yss-settings = { path = "../yss-settings" }
+yss-ui = { path = "../yss-ui" }

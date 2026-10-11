@@ -1,0 +1,48 @@
+[package]
+name = "yss-workbench"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+path = "src/workbench_app.rs"
+
+[dependencies]
+anyhow = "1"
+gpui-kit.workspace = true
+tokio = { workspace = true, features = ["sync", "time"] }
+serde_json.workspace = true
+uuid.workspace = true
+tracing.workspace = true
+directories = "6"
+open = "5.4.1"
+chrono.workspace = true
+yss-ui = { path = "../yss-ui" }
+yss-desktop-services = { path = "../yss-desktop-services" }
+yss-graph-ui = { path = "../yss-graph-ui" }
+yss-assistant-ui = { path = "../yss-assistant-ui" }
+yss-data-ui = { path = "../yss-data-ui" }
+yss-results-ui = { path = "../yss-results-ui" }
+yss-settings-ui = { path = "../yss-settings-ui" }
+yss-resource-ui = { path = "../yss-resource-ui" }
+yss-plugin-ui = { path = "../yss-plugin-ui" }
+yss-application = { path = "../yss-application" }
+yss-project = { path = "../yss-project" }
+yss-project-model = { path = "../yss-project-model" }
+yss-project-identity = { path = "../yss-project-identity" }
+yss-project-registry = { path = "../yss-project-registry" }
+yss-project-registry-contract = { path = "../yss-project-registry-contract" }
+yss-project-history = { path = "../yss-project-history" }
+yss-graph-document = { path = "../yss-graph-document" }
+yss-graph-editor = { path = "../yss-graph-editor" }
+yss-graph-analysis-contract = { path = "../yss-graph-analysis-contract" }
+yss-graph-execution = { path = "../yss-graph-execution" }
+yss-node-protocol = { path = "../yss-node-protocol" }
+yss-node-catalog = { path = "../yss-node-catalog" }
+yss-plugin-runtime = { path = "../yss-plugin-runtime" }
+yss-chart-document = { path = "../yss-chart-document" }
+yss-harness-contract = { path = "../yss-harness-contract" }
+yss-ui-contract = { path = "../yss-ui-contract" }
+yss-filesystem = { path = "../yss-filesystem" }
+yss-settings = { path = "../yss-settings" }
+yss-logging = { path = "../yss-logging" }

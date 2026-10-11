@@ -7,7 +7,7 @@
 
 Workbench 拓扑、标签顺序、尺寸、选中面板和折叠状态由 GPUI 的根 DockArea 拥有。Application 接收打开资源、定位图节点、打开结果和显示登记面板的请求，原生宿主调用已有工作台入口并确认执行结果。
 
-协议见 [UI contract](src/lib.rs)，用例见 [presentation](../yss-application/src/presentation.rs)，原生交付见 [workbench intents](../yss-desktop-gpui/src/workbench/intents.rs)。报告组件直接消费 [Application Results](../yss-application/src/graph/README.md) 的已解析结果，不经过本模块。
+协议见 [UI contract](src/lib.rs)，用例见 [presentation](../yss-application/src/presentation.rs)，原生交付见 [workbench intents](../yss-workbench/src/workbench/intents.rs)。报告组件直接消费 [Application Results](../yss-application/src/graph/README.md) 的已解析结果，不经过本模块。
 
 ## 请求与交付
 

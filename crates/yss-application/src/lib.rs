@@ -4,6 +4,7 @@ pub mod activity_panel;
 pub mod automation;
 pub mod chart;
 pub mod database;
+mod display_naming;
 mod docs;
 pub mod file_resources;
 pub mod graph;

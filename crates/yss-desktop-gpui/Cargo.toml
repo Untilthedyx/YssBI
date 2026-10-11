@@ -5,72 +5,8 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-hex.workspace = true
 anyhow = "1"
-bigdecimal = "0.4.10"
-yss-graph-document = { path = "../yss-graph-document" }
-yss-project = { path = "../yss-project" }
-yss-project-model = { path = "../yss-project-model" }
-gpui-kit = { version = "=0.7.1", features = [
-    "tree-sitter-bash",
-    "tree-sitter-css",
-    "tree-sitter-html",
-    "tree-sitter-javascript",
-    "tree-sitter-markdown",
-    "tree-sitter-python",
-    "tree-sitter-rust",
-    "tree-sitter-sql",
-    "tree-sitter-toml",
-    "tree-sitter-tsx",
-    "tree-sitter-typescript",
-    "tree-sitter-yaml",
-] }
-lru.workspace = true
-ratex-parser = "=0.1.14"
-ratex-layout = "=0.1.14"
-ratex-types = "=0.1.14"
-ratex-svg = { version = "=0.1.14", features = ["embed-fonts"] }
-tree-sitter-r = "=1.3.0"
-arborium-julia = "=2.18.2"
-yss-application = { path = "../yss-application" }
-yss-graph-editor = { path = "../yss-graph-editor" }
-yss-graph-analysis-contract = { path = "../yss-graph-analysis-contract" }
-yss-graph-diagnostics = { path = "../yss-graph-diagnostics" }
-yss-graph-execution = { path = "../yss-graph-execution" }
-yss-i18n = { path = "../yss-i18n" }
-yss-node-kernel = { path = "../yss-node-kernel" }
-yss-data-contract = { path = "../yss-data-contract" }
-yss-database-schema = { path = "../yss-database-schema" }
-yss-database-contract = { path = "../yss-database-contract" }
-yss-project-identity = { path = "../yss-project-identity" }
-yss-project-registry = { path = "../yss-project-registry" }
-yss-project-registry-contract = { path = "../yss-project-registry-contract" }
-yss-plugin-runtime = { path = "../yss-plugin-runtime" }
-yss-chart-document = { path = "../yss-chart-document" }
-yss-dataset-profile = { path = "../yss-dataset-profile" }
-chrono.workspace = true
-yss-project-history = { path = "../yss-project-history" }
-yss-canonical-hash = { path = "../yss-canonical-hash" }
-yss-node-protocol = { path = "../yss-node-protocol" }
-yss-node-catalog = { path = "../yss-node-catalog" }
-yss-harness-contract = { path = "../yss-harness-contract" }
-yss-harness-core = { path = "../yss-harness-core" }
-yss-ui-contract = { path = "../yss-ui-contract" }
-yss-filesystem = { path = "../yss-filesystem" }
-yss-settings = { path = "../yss-settings" }
-tokio = { workspace = true, features = ["sync", "time"] }
-serde.workspace = true
-serde_json = { workspace = true, features = ["raw_value"] }
-uuid.workspace = true
-url.workspace = true
-directories = "6"
-open = "5.4.1"
-percent-encoding = "2.3.2"
-tracing.workspace = true
-yss-logging = { path = "../yss-logging" }
-
-[dev-dependencies]
-markdown = "=1.0.0"
-
-[build-dependencies]
-rust-i18n-support = { version = "=4.2.4", features = ["codegen"] }
+gpui-kit.workspace = true
+tokio.workspace = true
+yss-ui = { path = "../yss-ui" }
+yss-workbench = { path = "../yss-workbench" }

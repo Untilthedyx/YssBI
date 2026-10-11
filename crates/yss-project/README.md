@@ -15,7 +15,7 @@ Event/Function 的种类检查位于实际定位入口，直接构造和反序�
 定位 Graph 文件复用路径扫描，不解码正文；正文损坏的文件仍可被定位以便修复。
 其他资源只在一致读取边界借用所需成员或数据库声明，不复制无关文档正文。
 
-该 crate 组合 `yss-project-model`、`yss-project-history`、`yss-project-operation`、`yss-resource-lifecycle` 与 `yss-filesystem` 等更低层 crate，但不依赖桌面框架、宿主交付协议、Application 工作流或 Database runtime。
+该 crate 组合 `yss-project-model`、`yss-project-history`、`yss-resource-lifecycle` 与 `yss-filesystem` 等更低层 crate；操作准入与重放账本位于私有 `src/project_operation.rs`。它不依赖桌面框架、宿主交付协议、Application 工作流或 Database runtime。
 
 边界约束：
 
@@ -182,7 +182,7 @@ Chart writer 支持调用者提供读取时的预期 revision；Harness 设置�
 `yss-resource-lifecycle` 独占资源生命周期登记、令牌准入和守卫回退链；Project 负责项目身份、
 文件事务与发布。项目激活移出旧登记后，其守卫可能仍在释放中，因此登记 ID 在同一个 registry
 的整个生命周期内不重用；新项目只重置资源 owner 与令牌水位，旧守卫不能影响新登记。
-`yss-project-operation` 单独拥有操作准入及重放账本。Graph 已原子保存有界命令回执后，
+私有 `project_operation` 模块拥有操作准入及重放账本，保留会话绑定、防重及 reservation 的 RAII 释放。Graph 已原子保存有界命令回执后，
 通过 `complete_in_owner` 释放准入，避免再维护一份无界的已完成 Graph 命令索引。
 
 ## 当前文档编辑
