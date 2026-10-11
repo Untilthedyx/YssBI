@@ -3,7 +3,6 @@ use gpui_kit::component::{
     ActiveTheme, Sizable,
     button::{Button, ButtonVariants},
     input::Editor,
-    text::TextView,
 };
 use gpui_kit::{Context, IntoElement, Render, Window, div, prelude::*};
 
@@ -13,57 +12,69 @@ impl Render for DocumentEditor {
             .id("markdown-document")
             .key_context("DocumentEditor")
             .size_full()
-            .relative()
-            .overflow_hidden()
-            .bg(cx.theme().table)
+            .flex()
+            .flex_col()
+            .min_w_0()
+            .min_h_0()
+            .bg(cx.theme().background)
             .on_action(cx.listener(|view, _: &SaveDocument, window, cx| view.save(window, cx)))
             .on_action(cx.listener(|view, _: &ToggleDocumentPreview, window, cx| {
                 view.toggle_preview(window, cx)
             }))
-            .child(if self.preview_visible {
-                div()
-                    .size_full()
-                    .px_8()
-                    .py_6()
-                    .child(
-                        TextView::new(&self.preview).plugin(crate::markdown::Markdown::default()),
-                    )
-                    .into_any_element()
-            } else {
-                Editor::new(&self.input)
-                    .size_full()
-                    .bordered(false)
-                    .appearance(false)
-                    .readonly((self.busy && !self.autosave_in_flight) || self.refreshing)
-                    .into_any_element()
-            })
             .child(
-                div().absolute().top_2().right_3().child(
-                    Button::new("document-preview")
-                        .small()
-                        .ghost()
-                        .label(if self.preview_visible {
-                            crate::text::t("detail.constantValue.edit")
-                        } else {
-                            crate::text::t("documents.preview")
-                        })
-                        .tooltip(crate::text::t("native.documents.togglePreview"))
-                        .on_click(
-                            cx.listener(|view, _, window, cx| view.toggle_preview(window, cx)),
-                        ),
-                ),
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .flex_shrink_0()
+                    .gap_3()
+                    .px_3()
+                    .py_1()
+                    .border_b_1()
+                    .border_color(cx.theme().border)
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(cx.theme().muted_foreground)
+                            .child("Markdown"),
+                    )
+                    .child(
+                        Button::new("document-preview")
+                            .small()
+                            .ghost()
+                            .label(if self.preview_visible {
+                                crate::text::t("detail.constantValue.edit")
+                            } else {
+                                crate::text::t("documents.preview")
+                            })
+                            .tooltip(crate::text::t("native.documents.togglePreview"))
+                            .on_click(
+                                cx.listener(|view, _, window, cx| view.toggle_preview(window, cx)),
+                            ),
+                    ),
             )
+            .child(div().flex_1().min_w_0().min_h_0().overflow_hidden().child(
+                if self.preview_visible {
+                    self.preview_view.clone().px_6().py_4().into_any_element()
+                } else {
+                    Editor::new(&self.input)
+                        .size_full()
+                        .bordered(false)
+                        .appearance(false)
+                        .readonly((self.busy && !self.autosave_in_flight) || self.refreshing)
+                        .into_any_element()
+                },
+            ))
             .when_some(self.error.as_ref(), |view, error| {
                 view.child(
                     div()
                         .id("document-save-error")
                         .role(gpui_kit::accesskit::Role::Alert)
-                        .absolute()
-                        .bottom_2()
-                        .left_3()
-                        .right_3()
-                        .p_2()
-                        .rounded_md()
+                        .flex_shrink_0()
+                        .px_3()
+                        .py_2()
+                        .border_t_1()
+                        .border_color(cx.theme().border)
                         .bg(cx.theme().muted)
                         .text_color(cx.theme().danger)
                         .text_xs()

@@ -8,7 +8,7 @@ use crate::services::NativeServices;
 use gpui_kit::component::{
     dock::{BasePanel, Panel, PanelEvent, PanelInfo, PanelState},
     input::{EditorState, InputEvent},
-    text::TextViewState,
+    text::{TextView, TextViewState},
 };
 use gpui_kit::{
     App, AppContext, Context, Entity, EventEmitter, FocusHandle, Focusable, Subscription, Window,
@@ -29,6 +29,7 @@ pub struct DocumentEditor {
     pub snapshot: DocSnapshot,
     input: Entity<EditorState>,
     preview: Entity<TextViewState>,
+    preview_view: TextView,
     _subscriptions: [Subscription; 3],
     preview_visible: bool,
     preview_task: Option<gpui_kit::Task<()>>,
@@ -53,13 +54,19 @@ impl DocumentEditor {
     ) -> Self {
         let settings = crate::preferences::current(cx).editor.clone();
         let input = cx.new(|cx| {
-            let mut input = EditorState::new(window, cx).default_value(snapshot.content.0.clone());
+            let mut input = EditorState::new(window, cx)
+                .language("markdown")
+                .default_value(snapshot.content.0.clone());
             input.set_soft_wrap(settings.soft_wrap, window, cx);
             input.set_line_number(settings.line_numbers, window, cx);
             input
         });
         let preview =
             cx.new(|cx| TextViewState::markdown(&snapshot.content.0, cx).selectable(true));
+        // Keep extension registrations and callbacks stable across Dock resize frames.
+        let preview_view = TextView::new(&preview)
+            .plugin(crate::markdown::Markdown::default())
+            .scrollable(true);
         let subscription =
             cx.subscribe_in(&input, window, |view, _, event, window, cx| match event {
                 InputEvent::Change => {
@@ -98,6 +105,7 @@ impl DocumentEditor {
             snapshot,
             input,
             preview,
+            preview_view,
             _subscriptions: [subscription, preferences, activation],
             preview_visible: settings.open_in_preview,
             preview_task: None,

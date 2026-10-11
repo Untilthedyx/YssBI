@@ -47,6 +47,16 @@ Maintain bilingual node help in `src/nodes/en/` and `src/nodes/zh/`, following t
 
 These are the canonical Markdown files for both the book and the desktop application's embedded help. `yss-node-catalog` includes them at compile time; do not keep copies under the crate. A book preview rebuilds when you edit the Markdown, while the application needs to be rebuilt to embed those edits. Catalog mappings and generated help remain owned by the [catalog module](../crates/yss-node-catalog/README.md).
 
+## Architecture analysis
+
+Repository-only evaluations live outside the book so historical measurements and
+unimplemented proposals are not presented as current product behavior.
+
+- [Zed crates 迁移与 YssBI 组织分析](analysis/zed-crates-migration.md):
+  migration candidates, replacement boundaries, crate organization and proposed
+  sequencing, based on the 2026-10-10 analysis snapshot. This is an evaluation,
+  not an approved roadmap; selected open work remains in the root `TODO.md`.
+
 ## Format and check
 
 From `docs/`, run:

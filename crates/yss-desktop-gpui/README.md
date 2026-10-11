@@ -85,14 +85,20 @@ Tokio blocking pool 执行，指针事件不读取磁盘。
 - `workbench/welcome`：空工作台的打开/新建入口及最近六项，一次点击打开捕获记录；只消费原登记投影与已有项目操作。
   欢迎页采用窄幅纵向分组与紧凑整行 ghost 按钮，快捷键提示读取工作台的实际 action binding；最近项目的名称与路径同排，悬停显示完整路径。
   独立项目库选择页与顶栏项目库按钮已移除；收藏、扫描、登记清理和回收站不再作为原生打开流程入口，底层登记服务仍保留。
-- `documents`：原生 Markdown 编辑器、可选择的 GFM 预览及文本撤销/重做。输入是未提交 buffer，
+- `documents`：使用 [GPUI Kit Editor](https://gpui-kit.com/component/editor/) 的 `EditorState::language("markdown")`，
+  显式启用 `tree-sitter-markdown`，提供 Markdown 块级/行内及已启用语言的围栏代码高亮、折叠、内置搜索和文本撤销/重做。
+  独立工具栏切换源码与预览，不遮挡正文或编辑器搜索栏；Ctrl/Cmd+Shift+V 切换模式，编辑时 Ctrl/Cmd+F 打开搜索。
+  可选择的 GFM 预览使用 `TextView::scrollable(true)` 虚拟化长文，正文区域独立滚动；保存错误占用独立底栏，不覆盖内容。
+  文档实例保留配置好的 `TextView`，重绘只克隆视图描述，复用同一预览状态、Markdown 扩展及公式/链接回调；
+  Dock 调整尺寸仍执行必要的布局与绘制，不在每帧重建插件配置，也不缓存固定尺寸或主题快照。
+  换行、行号和默认打开模式继续读取编辑器偏好。输入是未提交 buffer，
   手动保存或文档自动保存捕获当前 FileVersion，提交原 DocEdit 后调用原 Save；持久化失败保留中间编辑快照和输入。
   自动保存可关闭、按延迟或在失焦/切换标签时触发；写入中继续输入按修订判断是否仍脏，失败不循环重试。
   项目或版本失效不覆盖当前输入，干净文档可安装同一后端的后续投影；读取/保存期间收到的失效通知合并后重新查询。
   `documents/details` 从同一编辑器读取文件名、路径、保存/读取状态和错误；工作台只选择展示目标，不另建文件状态。
   数学公式复用共享 Markdown 扩展；外部引用预览仍待迁移。
 - `markdown`：节点文档、文档预览、Assistant 消息/引用和 Mind 标签共用 `Markdown` TextView 插件。
-  后台解析、文本选择、表格横向滚动及代码高亮复用原生组件；Cargo 显式启用 Bash、CSS、HTML、JavaScript、JSON、Python、Rust、SQL、TOML、TSX、TypeScript、YAML grammar。
+  后台解析、文本选择、表格横向滚动及代码高亮复用原生组件；Cargo 显式启用 Bash、CSS、HTML、JavaScript、Markdown、Python、Rust、SQL、TOML、TSX、TypeScript、YAML grammar，JSON 由 Tree-sitter 基础 feature 启用。
   `markdown/highlight` 在宿主启动时将 [tree-sitter-r](https://docs.rs/tree-sitter-r/) 与 [arborium-julia](https://docs.rs/arborium-julia/) 的 grammar 和查询注册到组件原有 LanguageRegistry，补齐 R、Julia；`R`、`jl` 共用对应语言配置。
   查询捕获名适配组件已有的主题分类，高亮、缓存与主题更新仍由组件负责，未知语言保持源码；单波浪号语义和脚注导航仍待迁移。
   `markdown/links` 只将无凭据的 HTTP(S) URL 交给平台，在后台调用 [open](https://docs.rs/open/5.4.1/open/fn.that.html)，失败显示本地化通知；不记录 URL 或底层错误正文。
