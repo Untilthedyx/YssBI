@@ -5,9 +5,10 @@ mod input;
 use super::ConversationPanel;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{
-    ActiveTheme, Disableable, Sizable,
+    ActiveTheme, Disableable, Sizable, WindowExt,
     button::{Button, ButtonVariants},
     input::Enter,
+    notification::Notification,
 };
 use gpui_kit::{AnyElement, Context, IntoElement, Window, div, prelude::*, relative};
 
@@ -73,6 +74,24 @@ impl ConversationPanel {
             .flex_shrink_0()
             .items_center()
             .gap_1()
+            .when_some(
+                self.stream_error.as_ref().or(self.error.as_ref()),
+                |controls, error| {
+                    let error = error.clone();
+                    controls.child(
+                        Button::new("assistant-error")
+                            .xsmall()
+                            .danger()
+                            .outline()
+                            .icon(IconName::CircleAlert)
+                            .tooltip(error.clone())
+                            .accessibility_label(error.clone())
+                            .on_click(move |_, window, cx| {
+                                window.push_notification(Notification::error(error.clone()), cx);
+                            }),
+                    )
+                },
+            )
             .child(reference_button)
             .child(self.effort_picker(cx))
             .child(
@@ -109,6 +128,10 @@ impl ConversationPanel {
                             .tooltip(yss_ui::text::t("panel.assistantCancel"))
                             .accessibility_label(yss_ui::text::t("panel.assistantCancel"))
                             .disabled(self.stopping)
+                            .loading(self.stopping)
+                            .when(self.stopping, |button| {
+                                button.tooltip(yss_ui::text::t("native.assistant.waitingForStop"))
+                            })
                             .on_click(cx.listener(|view, _, _, cx| view.cancel(cx)))
                     } else {
                         Button::new("assistant-send")
@@ -125,6 +148,10 @@ impl ConversationPanel {
                             )
                             .accessibility_label(yss_ui::text::t("panel.assistantSend"))
                             .disabled(empty || !self.can_send())
+                            .loading(self.refreshing)
+                            .when(self.refreshing, |button| {
+                                button.tooltip(yss_ui::text::t("native.assistant.restoring"))
+                            })
                             .on_click(cx.listener(|view, _, window, cx| view.send(window, cx)))
                     }),
             )

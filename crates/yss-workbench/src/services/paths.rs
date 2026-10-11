@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use directories::BaseDirs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use yss_application::runtime::ApplicationPaths;
 
 const APPLICATION_ID: &str = "com.zjy.yssbi";
@@ -31,15 +31,11 @@ impl NativePaths {
             };
             (data, logs)
         };
-        let packaged = std::env::current_exe()?
+        let executable = std::env::current_exe()?;
+        let executable_directory = executable
             .parent()
-            .context(crate::text::t("native.services.executableParentMissing"))?
-            .join("resources/samples");
-        let samples = if packaged.is_dir() {
-            packaged
-        } else {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../resources/samples")
-        };
+            .context(crate::text::t("native.services.executableParentMissing"))?;
+        let samples = samples_directory(executable_directory);
         Ok(Self {
             application: ApplicationPaths {
                 app_data_dir: data,
@@ -47,5 +43,52 @@ impl NativePaths {
             },
             logs,
         })
+    }
+}
+
+fn samples_directory(executable_directory: &Path) -> PathBuf {
+    #[cfg(target_os = "macos")]
+    if executable_directory.ends_with("Contents/MacOS") {
+        let bundled = executable_directory.join("../Resources/samples");
+        if bundled.is_dir() {
+            return bundled;
+        }
+    }
+    let adjacent = executable_directory.join("resources/samples");
+    if adjacent.is_dir() {
+        adjacent
+    } else {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../resources/samples")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn installed_samples_take_precedence_over_checkout() -> Result<()> {
+        let installation = tempfile::tempdir()?;
+        let samples = installation.path().join("resources/samples");
+        std::fs::create_dir_all(&samples)?;
+        assert_eq!(samples_directory(installation.path()), samples);
+        Ok(())
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn app_bundle_uses_contents_resources() -> Result<()> {
+        let installation = tempfile::tempdir()?;
+        let executable_directory = installation.path().join("YssBI.app/Contents/MacOS");
+        let samples = installation
+            .path()
+            .join("YssBI.app/Contents/Resources/samples");
+        std::fs::create_dir_all(&executable_directory)?;
+        std::fs::create_dir_all(&samples)?;
+        assert_eq!(
+            samples_directory(&executable_directory).canonicalize()?,
+            samples.canonicalize()?,
+        );
+        Ok(())
     }
 }

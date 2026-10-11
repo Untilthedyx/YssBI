@@ -1,7 +1,7 @@
 //! Workbench dock appearance; all topology and interaction state stays in DockArea.
 mod conversation;
 mod regions;
-mod single_tab;
+mod tabs;
 mod watermark;
 mod zoom_sidebar;
 pub(super) use watermark::EmptyEditor;
@@ -21,6 +21,10 @@ use gpui_kit::{
     Styled, WeakEntity, Window, div, prelude::*, px,
 };
 use std::{any::TypeId, cell::Cell, rc::Rc, sync::Arc};
+
+// Match the component TabBar's Small tier, which uses logical pixel dimensions.
+pub(super) const HEADER_HEIGHT: Pixels = px(24.);
+pub(super) const HEADER_BUTTON_SIZE: Pixels = px(20.);
 
 pub(super) fn create(
     workbench: WeakEntity<Workbench>,
@@ -196,6 +200,7 @@ impl DockAreaRenderer for WorkbenchDock {
     fn tab_group_renderer(&self) -> Rc<dyn TabGroupRenderer> {
         Rc::new(WorkbenchTabs {
             skin: self.skin.tab_group_renderer(),
+            tabs: tabs::Tabs::default(),
             area: self.area.clone(),
             workbench: self.workbench.clone(),
             measurements: self.measurements.clone(),
@@ -206,6 +211,7 @@ impl DockAreaRenderer for WorkbenchDock {
 
 struct WorkbenchTabs {
     skin: Rc<dyn TabGroupRenderer>,
+    tabs: tabs::Tabs,
     area: WeakEntity<DockArea>,
     workbench: WeakEntity<Workbench>,
     measurements: Rc<regions::Measurements>,
@@ -249,7 +255,7 @@ impl TabGroupRenderer for WorkbenchTabs {
         if conversation::matches(group) {
             return conversation::capture_close(frame, &self.workbench);
         }
-        frame.when_some(single_tab::panel(group, &self.area, cx), |frame, panel| {
+        frame.when_some(tabs::panel(group, &self.area, cx), |frame, panel| {
             let area = self.area.clone();
             let group = group.clone();
             let id = panel.panel_id(cx);
@@ -257,7 +263,7 @@ impl TabGroupRenderer for WorkbenchTabs {
             // the last tab, so handle this case before that handler runs.
             frame.capture_action(move |_: &ClosePanel, window, cx| {
                 cx.stop_propagation();
-                single_tab::close(&area, &group, id, window, cx);
+                tabs::close(&area, &group, id, window, cx);
             })
         })
     }
@@ -305,7 +311,7 @@ impl TabGroupRenderer for WorkbenchTabs {
                     group
                         .active_panel()
                         .is_some_and(|panel| !sidebar::is_navigation(panel)),
-                    |header| header.child(self.skin.render_tab_bar(group, window, cx)),
+                    |header| header.child(self.tabs.render(group, &self.area, window, cx)),
                 )
                 .into_any_element()
         } else if !group.is_zoomed()
@@ -321,10 +327,10 @@ impl TabGroupRenderer for WorkbenchTabs {
                 .all(is_tool_panel)
         {
             Empty.into_any_element()
-        } else if let Some(panel) = single_tab::panel(group, &self.area, cx) {
-            single_tab::render(panel, group, &self.area, window, cx)
-        } else {
+        } else if group.is_collapsed() {
             self.skin.render_tab_bar(group, window, cx)
+        } else {
+            self.tabs.render(group, &self.area, window, cx)
         };
         let toolbar = (!group.is_collapsed())
             .then(|| group.active_panel())

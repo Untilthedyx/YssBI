@@ -44,10 +44,9 @@ impl ConversationPanel {
                 Button::new("assistant-token-usage-trigger")
                     .xsmall()
                     .ghost()
-                    .size_6()
                     .accessibility_label(label.clone())
                     .tooltip(label.clone())
-                    .child(
+                    .icon(
                         ProgressCircle::new("assistant-context-usage")
                             .value(context.map_or(0., |(input, capacity)| {
                                 (100. * input as f64 / f64::from(capacity)).min(100.) as f32

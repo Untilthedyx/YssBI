@@ -21,7 +21,182 @@ For a standalone release binary, stage the sample resources beside the executabl
 cargo run -p yss-application --example build_samples -- --check --stage target/release/resources/samples
 ```
 
-Distribute the resulting `resources` folder with the binary. See the [sample asset guide](https://github.com/zhouyi207/YssBI/blob/main/resources/samples/README.md) for resource generation and validation. Native installers, signing and updater delivery remain open work.
+Distribute the resulting `resources` folder with the binary. See the [sample asset guide](https://github.com/zhouyi207/YssBI/blob/gpui/resources/samples/README.md) for resource generation and validation. Use the native packaging entry below for distributions; automatic update delivery is not implemented.
+
+## Packaging and releases
+
+The implementation follows Zed's [release workflow](https://github.com/zed-industries/zed/blob/main/.github/workflows/release.yml)
+and native [Linux](https://github.com/zed-industries/zed/blob/main/script/bundle-linux),
+[macOS](https://github.com/zed-industries/zed/blob/main/script/bundle-mac) and
+[Windows](https://github.com/zed-industries/zed/blob/main/script/bundle-windows.ps1) bundling:
+native target runners, complete asset validation, then a draft release.
+It does not copy Zed's private runners, signing services, branding, license, remote server or updater.
+
+### Targets and local commands
+
+Python 3.12 or newer and the repository Rust toolchain are required. Run from a native host
+matching both the target OS and architecture; the driver rejects cross-packaging.
+All automated Linux builds run directly on Ubuntu 24.04.
+
+| OS / build baseline | Rust targets | Distribution | GitHub runners |
+| --- | --- | --- | --- |
+| Ubuntu 24.04 | `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu` | `.tar.gz`, `.deb`, `.rpm` | `ubuntu-24.04`, `ubuntu-24.04-arm` |
+| macOS | `x86_64-apple-darwin`, `aarch64-apple-darwin` | `.dmg` containing `YssBI.app` | `macos-15-intel`, `macos-15` |
+| Windows | `x86_64-pc-windows-msvc`, `aarch64-pc-windows-msvc` | Inno Setup `.exe` and portable `.zip` | `windows-2022`, `windows-11-arm` |
+
+```sh
+# Default Linux output: relocatable archive.
+python scripts/package.py --target x86_64-unknown-linux-gnu --output dist
+
+# Ubuntu 24.04: all three Linux formats.
+python scripts/package.py --target x86_64-unknown-linux-gnu --linux-format tar.gz --linux-format deb --linux-format rpm --output dist/ubuntu
+
+# Fedora 44: local native RPM build, using rpm-build and native development packages.
+python scripts/package.py --target x86_64-unknown-linux-gnu --linux-format rpm --output dist/fedora
+
+# Repackage an existing target/<triple>/release build.
+python scripts/package.py --target x86_64-unknown-linux-gnu --skip-build --output dist/repack
+
+# Repackage a specified native binary for local validation, not an official release.
+python scripts/package.py --target x86_64-unknown-linux-gnu --binary target/release/yss-desktop-gpui --output dist/local
+```
+
+The driver uses `cargo build --locked --release`, then runs the existing
+`build_samples --check --stage` example on the host. It verifies every Parquet size and
+SHA-256 against the catalog and includes dataset provenance. `THIRD_PARTY_NOTICES.txt`
+contains resolved Rust dependency metadata and available license/notice files. This is
+not a legal compliance certification: the application has no declared distribution license,
+and maintainers must review application, bundled native library, and dataset redistribution
+terms before publishing. No application license or product icon is invented.
+RPM's required license field is `LicenseRef-Unknown`; it is not a redistribution grant.
+
+Assets use `yssbi-<version>-<os>-<architecture>.<extension>`, including
+`yssbi-<version>-linux-<architecture>.rpm`. DEB uses
+`yssbi-<version>-ubuntu24.04-<architecture>.deb`. Every asset has a `.sha256` sidecar.
+The driver refuses to overwrite existing artifacts; use a fresh output directory.
+Without `--linux-format`, Linux produces only the archive. DEB builds require Ubuntu 24.04;
+RPM builds accept Ubuntu 24.04 or Fedora 44. Package versions use `~` for prereleases,
+omit SemVer build metadata and follow dpkg/RPM ordering; both package revisions are `1`.
+
+**An RPM extension does not imply compatibility with every RPM distribution.** Official
+RPMs use Ubuntu 24.04's glibc baseline and SONAME/versioned ELF requirements, not Fedora
+build provenance. Local Fedora builds can require newer libraries. Fedora, RHEL and
+openSUSE installation compatibility must be checked on the intended release; missing
+dependencies are not bypassed. DEB likewise does not imply support for every Debian derivative.
+
+### Native prerequisites and installation layout
+
+The shared `.github/actions/setup-build/action.yml` owns the hosted build prerequisites.
+The Rust version comes from `rust-toolchain.toml`; system packages come from the selected
+runner's distribution repositories.
+
+- **Linux archive:** Clang/C++ tools, CMake, pkg-config and the fontconfig, FreeType, ALSA, GLib,
+  Wayland, X11/XCB and xkbcommon development packages. Extract the archive and run
+  `yssbi.app/bin/yssbi`; keep the whole directory together. Its relocatable launcher uses
+  bundled non-system libraries, while libc, the GLib family, graphics drivers and ALSA stay
+  on the host. `libexec/resources/samples` is beside the actual executable. The included
+  `share/applications/com.zjy.yssbi.desktop` expects `yssbi` on the desktop session's PATH.
+  A locally built archive is not proof of compatibility with older distributions.
+- **Linux native packages:** Ubuntu requires `dpkg-dev`, `rpm`, `binutils` and `file`;
+  Fedora local RPM builds require `rpm-build`. `dpkg-shlibdeps` and RPM's ELF scanner derive
+  binary dependencies; explicit dependencies cover dynamically loaded font, keyboard,
+  Wayland, EGL/Vulkan and desktop portal libraries. A GTK portal backend is recommended.
+  Native packages do not bundle shared libraries or set `LD_LIBRARY_PATH`.
+  Both install `/usr/libexec/yssbi/yss-desktop-gpui`, adjacent `resources/samples`,
+  `/usr/bin/yssbi`, `/usr/share/applications/com.zjy.yssbi.desktop`, and notices under
+  `/usr/share/doc/yssbi`. Install with `sudo apt install ./yssbi-<version>-ubuntu24.04-<architecture>.deb`
+  or `sudo dnf install ./yssbi-<version>-linux-<architecture>.rpm`; launch `yssbi`.
+  Removing/purging the package does not remove user projects, settings or application data.
+  DEB installs notices as `/usr/share/doc/yssbi/copyright`; RPM marks
+  `THIRD_PARTY_NOTICES.txt` as `%license`, preserving notices when ordinary documentation is excluded.
+- **macOS:** Xcode command-line tools plus the Metal toolchain. Set
+  `MACOSX_DEPLOYMENT_TARGET=10.15.7` for Intel or `11.0` for Apple Silicon when building;
+  the bundle records any higher minimum embedded in the executable. Unresolved non-system
+  dylibs fail packaging. Open the DMG and drag `YssBI.app` to Applications.
+  The executable is `Contents/MacOS/yss-desktop-gpui`; resources are in `Contents/Resources`.
+  The executable and app always receive certificate-free ad-hoc signatures, required for
+  Apple Silicon execution. There is no Developer ID signing or notarization; Gatekeeper may block downloads.
+- **Windows:** PowerShell 7, Visual Studio C++ build tools/target CRT redistributables,
+  LLVM/libclang, Windows SDK `fxc.exe` and Inno Setup 6.3 or newer. Run inside the VS developer
+  environment for the native target. `GPUI_FXC_PATH` is the full path to `fxc.exe`.
+  Required MSVC runtime DLLs are architecture-checked and their existing Microsoft publisher
+  signatures are verified before copying. This does not require a maintainer certificate.
+  Unknown non-system DLL imports fail packaging. The unsigned installer is per-user,
+  under `%LOCALAPPDATA%\Programs\YssBI`, with shortcuts and normal uninstall.
+  Both EXE and ZIP keep `resources/samples` beside `yss-desktop-gpui.exe`.
+  Uninstall preserves user projects and application data. SmartScreen may warn about downloads.
+
+No developer certificates, signing credentials or signing-mode options are required or supported.
+SHA-256 sidecars verify integrity, not publisher identity.
+
+### GitHub setup and release procedure
+
+CI runs on pull requests and pushes to `gpui`/`main`, and is reused as a release gate.
+It checks workspace formatting and locked compilation on Linux/macOS/Windows, focused
+portable unit tests, native resource discovery, and packaging regression tests.
+Actions are pinned to commit SHAs; Dependabot tracks Cargo and GitHub Actions weekly.
+Checkout credentials are not persisted. Only the final draft publication job receives
+`contents: write`, using GitHub's automatically supplied token.
+No release environments or manually configured Secrets/variables are needed.
+The repository's default workflow token permission remains read-only; PR approval by Actions is disabled.
+
+After committing and pushing the workflow and application changes to `gpui`:
+
+1. Set `[workspace.package].version` in `Cargo.toml` to the intended version and land that
+   change on `gpui`. A release commit must be an ancestor of `origin/gpui`.
+2. Create and push the matching tag, for example `v0.4.0`. A mismatched tag fails preflight.
+   Alternatively, dispatch `release.yml` with an existing matching version tag as its ref.
+3. CI and all six native build jobs must pass: two Linux, two macOS and two Windows jobs
+   produce twelve bundles. Each target runs packaged `--help` checks.
+   DEB is installed directly on its ephemeral Ubuntu build runner with normal APT dependency
+   resolution; resource hashes, notices, launcher ownership, removal, reinstallation, purge
+   and user-data preservation are checked. The build runner already has development
+   dependencies, so this is not a minimal-system installation test.
+   RPM is inspected without installation: metadata, declared dependencies, payload paths,
+   modes, sample hashes and notices are checked, then the unpacked binary is launched.
+   RPMs are not force-installed into Ubuntu's package database.
+   Windows installs, launches and uninstalls its installer.
+4. The final job checks the exact asset set and hashes, adds `SHA256SUMS`, uploads assets,
+   verifies the uploaded set, and leaves a **draft** release for human review.
+   An existing draft or public release is never overwritten. An interrupted upload can
+   leave a partial draft: inspect and explicitly remove it before rerunning.
+5. Review legal notices, target-distribution installation and native UI/resource behavior
+   before manually publishing. The workflow does not auto-publish.
+
+Every build's artifacts remain downloadable from its Actions run for 14 days.
+
+### Verification boundaries
+
+Local x86_64 validation repackaged an existing Ubuntu-built executable using Ubuntu 24.04's
+actual RPM tools, extracted into a temporary tool directory on Fedora 44 without installing
+them system-wide. RPM construction, declared dependencies, legal notices, five sample
+hashes and relocated `--help` execution passed with both Ubuntu and Fedora RPM scanners.
+The regenerated Linux archive also passed relocated execution and all sample hash checks.
+An existing Ubuntu DEB passed the current metadata, payload and relocated launcher checks,
+without installing it into the host package database.
+Workflow syntax, PowerShell parsing and missing/corrupt release-asset rejection passed.
+These checks do not replace a complete native Ubuntu hosted run.
+Linux ARM64 and macOS/Windows packages still require their native hosted runners;
+no release workflow or draft publication was triggered by local validation.
+
+For read-only RPM validation, install Ubuntu's `rpm` package or Fedora's `rpm-build` package
+(inspection also uses `rpmdeps`), along with the application's runtime libraries:
+
+```sh
+python scripts/linux_package_smoke.py rpm-contents path/to/yssbi-0.4.0-linux-x86_64.rpm
+```
+
+Native install/uninstall checks are available as `sudo python3 scripts/linux_package_smoke.py deb <asset>`
+on Ubuntu 24.04 or `rpm <asset>` on Fedora 44. Run these only on disposable clean machines:
+they modify the package database and install/remove packages. They refuse existing YssBI
+installations or occupied installation paths. Keep the asset's `.sha256` sidecar beside it.
+Read-only inspection uses `rpm2archive` and Python's filtered tar extraction, not a custom archive parser.
+
+Ubuntu 24.04's `dpkg-shlibdeps` reports libc6 `/usr`-merge diversion warnings; these remain
+visible, without missing-dependency bypasses or log filtering.
+Headless `--help` checks do not establish GPU rendering, input, system dialogs,
+Gatekeeper/SmartScreen behavior, or successful sample import. Exercise those on each
+target before publishing the draft; graphical sessions require host drivers and a working portal backend.
 
 ## Bird's-eye view of YssBI
 

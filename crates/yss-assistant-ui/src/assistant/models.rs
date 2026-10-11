@@ -196,6 +196,8 @@ impl ConversationPanel {
                 )
             },
         );
+        let unavailable = self.ready && !self.model_available();
+        let selecting = self.selecting;
         let owner = cx.entity().downgrade();
         // Window state releases the query and popup when this conversation is hidden.
         let picker = window.use_keyed_state("assistant-model-picker", cx, |window, cx| {
@@ -214,8 +216,9 @@ impl ConversationPanel {
             .xsmall()
             .appearance(false)
             .p_0()
-            .w_full()
+            .w_auto()
             .h_full()
+            .border_0()
             .menu_width(px(320.))
             .menu_max_h(px(300.))
             .disabled(!self.ready || self.selecting)
@@ -234,6 +237,14 @@ impl ConversationPanel {
                     .max_w(px(144.))
                     .label(label.clone())
                     .tooltip(hint.clone())
+                    .when(unavailable, |button| {
+                        button
+                            .warning()
+                            .outline()
+                            .icon(IconName::TriangleAlert)
+                            .tooltip(yss_ui::text::t("native.assistant.configureModelHint"))
+                    })
+                    .loading(selecting)
                     .accessibility_label(yss_ui::text::t("settings.models.chooseModel"))
                     .dropdown_caret(true)
                     .selected(trigger.is_open())
@@ -255,8 +266,8 @@ impl ConversationPanel {
             })
             .into_any_element();
         div()
-            .w(px(144.))
-            .h(px(20.))
+            .max_w(px(144.))
+            .h_5()
             .flex_shrink_0()
             .child(control)
             .into_any_element()

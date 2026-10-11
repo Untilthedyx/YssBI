@@ -31,6 +31,10 @@ yss-filesystem = { path = "../yss-filesystem" }
 yss-i18n = { path = "../yss-i18n" }
 yss-settings = { path = "../yss-settings" }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+raw-window-handle = "0.6.2"
+x11rb = { version = "0.13.2", features = ["shape"] }
+
 [dev-dependencies]
 markdown = "=1.0.0"
 uuid.workspace = true

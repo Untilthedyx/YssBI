@@ -38,7 +38,7 @@ impl Render for ResultPanel {
                     )
                     .when_some(
                         self.table.as_ref().filter(|_| !self.report_mode),
-                        |body, table| body.child(yss_ui::table::present(table, cx)),
+                        |body, table| body.child(yss_ui::table::present(table, cx).bordered(false)),
                     )
                     .when_some(self.plot.as_ref(), |body, plot| body.child(plot.clone()))
                     .when(

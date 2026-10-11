@@ -37,7 +37,7 @@ impl Render for DatabaseEditor {
                     .min_h_0()
                     .relative()
                     .overflow_hidden()
-                    .child(yss_ui::table::present(&self.grid, cx))
+                    .child(yss_ui::table::present(&self.grid, cx).bordered(false))
                     .when(busy || !self.ready, |view| {
                         view.child(
                             div()

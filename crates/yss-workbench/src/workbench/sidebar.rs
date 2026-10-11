@@ -61,7 +61,7 @@ impl NavigationHeaders {
             .clone()
             .cached(
                 StyleRefinement::default()
-                    .w(px(124.))
+                    .w(super::dock::HEADER_BUTTON_SIZE * 4. + px(12.))
                     .h_full()
                     .flex_shrink_0(),
             )
@@ -260,7 +260,7 @@ pub(super) fn render_header(
         });
     div()
         .id("sidebar-header")
-        .h(px(36.))
+        .h(super::dock::HEADER_HEIGHT)
         .flex_shrink_0()
         .flex()
         .items_center()
@@ -328,7 +328,7 @@ fn render_navigation(view: &Navigation, cx: &mut App) -> AnyElement {
                             .hover(cx.theme().sidebar_accent.opacity(0.5))
                             .active(cx.theme().sidebar_accent.opacity(0.5)),
                     )
-                    .size(px(28.))
+                    .size(super::dock::HEADER_BUTTON_SIZE)
                     .p_0()
                     .rounded(px(4.))
                     // A child icon keeps its explicit pixel size independent of Button's size.

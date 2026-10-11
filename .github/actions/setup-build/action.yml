@@ -1,0 +1,88 @@
+name: Set up native build tools
+description: Install the repository Rust toolchain and GPUI platform prerequisites.
+inputs:
+  target:
+    description: Native Rust target triple
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: '3.13'
+        architecture: ${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}
+    - name: Install Linux prerequisites
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install --no-install-recommends -y \
+          build-essential clang lld llvm cmake ninja-build pkg-config dpkg-dev binutils rpm file \
+          libasound2-dev libfontconfig1-dev libfreetype6-dev libglib2.0-dev \
+          libssl-dev libsqlite3-dev libzstd-dev libwayland-dev \
+          libx11-xcb-dev libxcb1-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+          libxkbcommon-dev libxkbcommon-x11-dev libvulkan1 libegl1-mesa-dev
+        printf 'CC=clang\nCXX=clang++\n' >> "$GITHUB_ENV"
+    - name: Set up Xcode tools
+      if: runner.os == 'macOS'
+      shell: bash
+      env:
+        BUILD_TARGET: ${{ inputs.target }}
+      run: |
+        if ! xcrun metal --version; then
+          xcodebuild -downloadComponent MetalToolchain
+        fi
+        case "$BUILD_TARGET" in
+          x86_64-apple-darwin) echo 'MACOSX_DEPLOYMENT_TARGET=10.15.7' >> "$GITHUB_ENV" ;;
+          aarch64-apple-darwin) echo 'MACOSX_DEPLOYMENT_TARGET=11.0' >> "$GITHUB_ENV" ;;
+          *) exit 1 ;;
+        esac
+    - name: Set up MSVC, LLVM and Inno Setup
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        BUILD_TARGET: ${{ inputs.target }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+        $installation = & $vswhere -latest -products '*' -property installationPath
+        if (!$installation) { throw 'Visual Studio installation not found' }
+        Import-Module (Join-Path $installation 'Common7\Tools\Microsoft.VisualStudio.DevShell.dll')
+        $arch = if ($env:BUILD_TARGET -eq 'aarch64-pc-windows-msvc') { 'arm64' } else { 'x64' }
+        # x64 host tools also run under emulation on Windows ARM; output is native ARM64.
+        Enter-VsDevShell -VsInstallPath $installation -SkipAutomaticLocation -DevCmdArguments "-arch=$arch -host_arch=x64"
+        foreach ($name in @('INCLUDE', 'LIB', 'LIBPATH', 'VCINSTALLDIR', 'VCToolsInstallDir', 'VCToolsRedistDir', 'WindowsSdkDir', 'WindowsSDKVersion', 'PATH')) {
+          $value = [Environment]::GetEnvironmentVariable($name)
+          if (!$value) { throw "Visual Studio did not set $name" }
+          "$name=$value" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        }
+        $llvm = Join-Path $env:ProgramFiles 'LLVM\bin'
+        if (!(Test-Path (Join-Path $llvm 'clang-cl.exe'))) { throw 'LLVM clang-cl is required' }
+        "LIBCLANG_PATH=$llvm" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        $llvm | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+        if ($arch -eq 'arm64') {
+          'CC_aarch64_pc_windows_msvc=clang-cl' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          'CXX_aarch64_pc_windows_msvc=clang-cl' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        }
+        $inno = @("${env:ProgramFiles(x86)}\Inno Setup 6", "$env:ProgramFiles\Inno Setup 6") |
+          Where-Object { Test-Path (Join-Path $_ 'ISCC.exe') } | Select-Object -First 1
+        if (!$inno) {
+          choco install innosetup --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installation failed' }
+          $inno = @("${env:ProgramFiles(x86)}\Inno Setup 6", "$env:ProgramFiles\Inno Setup 6") |
+            Where-Object { Test-Path (Join-Path $_ 'ISCC.exe') } | Select-Object -First 1
+        }
+        if (!$inno) { throw 'Inno Setup compiler not found' }
+        $inno | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+        $fxc = Get-Command fxc.exe -ErrorAction Stop
+        "GPUI_FXC_PATH=$($fxc.Source)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+    - name: Install pinned Rust toolchain
+      shell: bash
+      env:
+        BUILD_TARGET: ${{ inputs.target }}
+      run: |
+        toolchain="$(python -c 'import pathlib,tomllib; print(tomllib.loads(pathlib.Path("rust-toolchain.toml").read_text())["toolchain"]["channel"])')"
+        rustup set default-host "$BUILD_TARGET"
+        rustup toolchain install "$toolchain" --profile minimal --component rustfmt
+        rustup target add --toolchain "$toolchain" "$BUILD_TARGET"

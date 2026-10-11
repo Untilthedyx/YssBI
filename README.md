@@ -102,6 +102,26 @@ cargo run -p yss-application --example build_samples -- --check --stage target/r
 示例 Parquet 已随源码提供，开发启动可离线读取；更新来源和资源校验见
 [示例资产](resources/samples/README.md)。
 
+### 打包与 GitHub 发布
+
+采用 Zed 的原生构建方式，Linux、macOS、Windows 均覆盖 x86_64 / ARM64：
+Linux 在 Ubuntu 24.04 原生 runner 上统一生成 `.deb`、`.rpm` 与 `.tar.gz`，
+macOS 提供 `.dmg`，Windows 提供安装程序 `.exe` 与便携 `.zip`。
+版本来自 workspace，工具链与依赖使用仓库锁定值，示例资源由原有 Rust 工具校验并随包安装。
+
+```bash
+# 在与目标系统、架构相符的机器上执行；其他 target 见发布指南
+python3 scripts/package.py --target x86_64-unknown-linux-gnu
+# Ubuntu 24.04 的全部 Linux 格式；Fedora 44 本机构建可单独选择 rpm
+python3 scripts/package.py --target x86_64-unknown-linux-gnu --linux-format tar.gz --linux-format deb --linux-format rpm --output dist/ubuntu
+```
+
+GitHub CI 检查三个操作系统；推送与 Cargo 版本一致的 `v*` 标签触发六个原生构建任务，
+产出六个 Rust 目标的十二份分发包。包内启动、Ubuntu runner 上的 DEB 安装／卸载、
+RPM 内容及解包运行检查成功后，校验完整产物集合与摘要并创建 **Release 草稿**，不自动公开发布。
+无需证书或签名 Secrets；macOS 仅保留免证书 ad-hoc 签名，下载时仍可能出现系统安全提示。
+RPM 不承诺兼容所有 RPM 发行版；原生工具要求与验收边界见[打包与发布指南](docs/src/development.md#packaging-and-releases)。
+
 ## 开发与验证入口
 
 [Cargo.toml](Cargo.toml) 拥有 workspace、默认入口和共享依赖。修改库时明确选择

@@ -9,9 +9,7 @@ use gpui_kit::component::{
     menu::{DropdownMenu, PopupMenuItem},
     tooltip::Tooltip,
 };
-use gpui_kit::{
-    AnyElement, App, Empty, Entity, IntoElement, WeakEntity, Window, div, prelude::*, px,
-};
+use gpui_kit::{AnyElement, App, Empty, Entity, IntoElement, WeakEntity, Window, div, prelude::*};
 
 pub(super) fn matches(group: &TabGroupContext) -> bool {
     !group.panels().is_empty() && group.panels().iter().all(columns::is_conversation)
@@ -41,7 +39,7 @@ pub(super) fn render(
         .is_none_or(|owner| owner.read(cx).is_closing(cx));
     div()
         .id("conversation-column-header")
-        .h(px(36.))
+        .h(super::HEADER_HEIGHT)
         .flex_shrink_0()
         .min_w_0()
         .flex()
@@ -51,11 +49,8 @@ pub(super) fn render(
         .bg(cx.theme().tab_bar)
         .border_b_1()
         .border_color(cx.theme().border)
-        .child(
-            Icon::new(IconName::MessageSquareText)
-                .size_4()
-                .text_color(cx.theme().muted_foreground),
-        )
+        .text_color(cx.theme().tab_active_foreground)
+        .child(Icon::new(IconName::MessageSquareText).size_4())
         .child(
             div()
                 .id("conversation-title")
@@ -63,7 +58,6 @@ pub(super) fn render(
                 .min_w_0()
                 .px_1()
                 .text_sm()
-                .text_color(cx.theme().muted_foreground)
                 .truncate()
                 .tooltip({
                     let title = title.clone();
